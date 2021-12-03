@@ -4,7 +4,8 @@ import * as path from 'path'
 
 import * as apigateway from '@aws-cdk/aws-apigateway'
 import * as cdk from '@aws-cdk/core'
-import * as lambda from '@aws-cdk/aws-lambda'
+import * as lambda from '@aws-cdk/aws-lambda-nodejs'
+import { Duration } from '@aws-cdk/core'
 
 export class TerrariaServerStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
@@ -12,41 +13,43 @@ export class TerrariaServerStack extends cdk.Stack {
 
     const lambdaDir = path.join(__dirname, 'lambdas')
 
-    const startLambda = new lambda.Function(this, 'StartTerrariaServerLambda', {
-      runtime: lambda.Runtime.NODEJS_14_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromInline('TODO'),
+    const startLambda = new lambda.NodejsFunction(this, 'StartTerrariaServerLambda', {
+      entry: path.join(lambdaDir, 'start-lambda.js'),
+      handler: 'handler',
       functionName: 'StartTerrariaServerLambda',
     })
 
-    const stopLambda = new lambda.Function(this, 'StopTerrariaServerLambda', {
-      runtime: lambda.Runtime.NODEJS_14_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromInline('TODO'),
+    const stopLambda = new lambda.NodejsFunction(this, 'StopTerrariaServerLambda', {
+      entry: path.join(lambdaDir, 'stop-lambda.js'),
+      handler: 'handler',
       functionName: 'StopTerrariaServerLambda',
     })
 
-    const statusLambda = new lambda.Function(this, 'TerrariaServerStatusLambda', {
-      runtime: lambda.Runtime.NODEJS_14_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromInline('TODO'),
+    const statusLambda = new lambda.NodejsFunction(this, 'TerrariaServerStatusLambda', {
+      entry: path.join(lambdaDir, 'status-lambda.js'),
+      handler: 'handler',
       functionName: 'TerrariaServerStatusLambda',
     })
 
-    const authLambda = new lambda.Function(this, 'TerrariaServerAuthLambda', {
-      runtime: lambda.Runtime.NODEJS_14_X,
-      handler: 'index.handler',
-      code: lambda.AssetCode.fromAsset(lambdaDir + '/auth-lambda'),
+    const authLambda = new lambda.NodejsFunction(this, 'TerrariaServerAuthLambda', {
+      entry: path.join(lambdaDir, 'auth-lambda.js'),
+      handler: 'handler',
       functionName: 'TerrariaServerAuthLambda',
       environment: {
         'PASSWORD': process.env.PASSWORD ?? crypto.randomUUID()
       },
     })
 
-    const api = new apigateway.RestApi(this, 'TerrariaServerApi')
+    const api = new apigateway.RestApi(this, 'TerrariaServerApi', {
+      defaultCorsPreflightOptions: {
+        allowOrigins: apigateway.Cors.ALL_ORIGINS,
+        allowMethods: apigateway.Cors.ALL_METHODS,
+      }
+    })
     const authorizer = new apigateway.RequestAuthorizer(this, 'TerrariaServerAuthorizer', {
       handler: authLambda,
-      identitySources: [apigateway.IdentitySource.header('Authorization')]
+      identitySources: [apigateway.IdentitySource.header('Authorization')],
+      resultsCacheTtl: Duration.seconds(0),
     })
 
     api.root
@@ -59,6 +62,6 @@ export class TerrariaServerStack extends cdk.Stack {
 
     api.root
       .addResource('status')
-      .addMethod('GET', new apigateway.LambdaIntegration(statusLambda), { authorizer })
+      .addMethod('GET', new apigateway.LambdaIntegration(statusLambda))
   }
 }

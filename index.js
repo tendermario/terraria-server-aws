@@ -21,7 +21,7 @@ fn = () => {
   fetch(apiGatewayUrl + getStatus)
     .then(response => {
       const status = response.json() // TODO: get the body or whatever
-      const notStatus = status == "On" ? "Off" : "On" 
+      const notStatus = status == "On" ? "Off" : "On"
       // Make sure we're not replacing with garbage data...
       if (status) {
         currentState.textContent(`Status: ${status}`)
