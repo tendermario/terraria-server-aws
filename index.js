@@ -19,10 +19,11 @@ function fn() {
 
   fetch(apiGatewayUrl + getStatus)
     .then(response => {
-      const status = response.json() // TODO: get the body or whatever
-      const notStatus = status == "On" ? "Off" : "On"
+      const {result} = response.json().body
+      const status = result == "running" ? "On" : "Off"
+      const notStatus = result == "running" ? "Off" : "On"
       // Make sure we're not replacing with garbage data...
-      if (status) {
+      if (result) {
         currentState.textContent(`Status: ${status}`)
         changeStateButton.textContent(`Turn: ${notStatus}`)
       }
