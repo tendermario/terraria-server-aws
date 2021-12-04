@@ -1,4 +1,4 @@
-const apiGatewayUrl = 'https://ibrrh55jbl.execute-api.us-west-2.amazonaws.com/'
+const apiGatewayUrl = 'ky331xbqw4.execute-api.us-west-2.amazonaws.com/prod/'
 
 const getStatus = 'status'
 

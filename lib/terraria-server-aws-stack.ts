@@ -44,6 +44,7 @@ export class TerrariaServerStack extends cdk.Stack {
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
+        allowHeaders: ['Authorization'],
       }
     })
     const authorizer = new apigateway.RequestAuthorizer(this, 'TerrariaServerAuthorizer', {
