@@ -7,13 +7,20 @@
     <title>Terraria server - Loading...</title>
     <script src="index.js"></script>
     <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-image: url("images/terraria.png");
+        }
+    </style>
 </head>
-<body>
-    <div id="current-state">
+<body class="pt-6 md:p-8 text-center text-black text-4xl font-medium space-y-6">
+    <div class="" id="current-state">
         Status: Loading...
     </div>
-    <button id="change-state">
+    <button class="py-2 px-4 font-semibold rounded-lg shadow-md text-white bg-green-500 hover:bg-green-700" id="change-state">
         Loading...
     </button>
+    <h2 class="text-gray-500">Enter password:</h2>
+    <input class="w-40 px-2 py-1 bg-gray-200 rounded-lg shadow-md" id="password"></input>
 </body>
 </html>
