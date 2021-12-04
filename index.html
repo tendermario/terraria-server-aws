@@ -10,17 +10,20 @@
     <style>
         body {
             background-image: url("images/terraria.png");
+            background-color: #53aeb4;
         }
     </style>
 </head>
-<body class="pt-6 md:p-8 text-center text-black text-4xl font-medium space-y-6">
-    <div class="" id="current-state">
-        Status: Loading...
+<body class="bg-no-repeat bg-top pt-6 md:p-8 text-center text-black text-4xl font-medium font-mono grid grid-cols-3 gap-10">
+    <div class="bg-yellow-100 space-y-6 rounded-3xl py-10 col-start-2">
+        <div class="" id="current-state">
+            Status: Loading...
+        </div>
+        <button class="py-2 px-4 font-semibold rounded-lg shadow-md text-white bg-green-500 hover:bg-green-700" id="change-state">
+            Loading...
+        </button>
+        <h2 class="text-gray-500">Enter password:</h2>
+        <input class="w-40 px-2 py-1 bg-gray-100 rounded-lg shadow-md" id="password"></input>
     </div>
-    <button class="py-2 px-4 font-semibold rounded-lg shadow-md text-white bg-green-500 hover:bg-green-700" id="change-state">
-        Loading...
-    </button>
-    <h2 class="text-gray-500">Enter password:</h2>
-    <input class="w-40 px-2 py-1 bg-gray-200 rounded-lg shadow-md" id="password"></input>
 </body>
 </html>
