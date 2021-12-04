@@ -14,7 +14,7 @@ export class TerrariaServerStack extends cdk.Stack {
     const lambdaDir = path.join(__dirname, 'lambdas')
 
     const startLambda = new lambda.NodejsFunction(this, 'StartTerrariaServerLambda', {
-      entry: path.join(lambdaDir, 'start-lambda.js'),
+      entry: path.join(lambdaDir, 'start-lambda.ts'),
       handler: 'handler',
       functionName: 'StartTerrariaServerLambda',
     })
