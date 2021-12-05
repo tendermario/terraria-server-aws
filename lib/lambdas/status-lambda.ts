@@ -1,4 +1,4 @@
-import { EC2Client, StartInstancesCommand } from '@aws-sdk/client-ec2'
+import { EC2Client, DescribeInstanceStatusCommand } from '@aws-sdk/client-ec2'
 import { APIGatewayProxyResult } from 'aws-lambda'
 
 const INSTANCE_ID = 'i-0113697bf55dbbd00'
@@ -6,10 +6,10 @@ const INSTANCE_ID = 'i-0113697bf55dbbd00'
 export const handler = async (): Promise<APIGatewayProxyResult> => {
   let result, statusCode
   try {
-    const ec2Result = await spinUpInstance()
-    result = ec2Result.StartingInstances
+    const ec2Result = await describeInstances()
+    result = ec2Result.InstanceStatuses
       ?.find(i => i.InstanceId === INSTANCE_ID)
-      ?.CurrentState?.Name
+      ?.InstanceState?.Name
     statusCode = result ? 200 : 404
     result = result ?? 'not found'
   } catch (e) {
@@ -28,11 +28,12 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
   }
 }
 
-// Starts up an EC2 instance.
-// For now, we are targeting an instance that we've already created.
-const spinUpInstance = async () => {
+// Gets the statuses of a set of EC2 instances.
+// For now, we are only targeting an instance that we've already created.
+const describeInstances = async () => {
   const client = new EC2Client({ region: 'us-west-2' })
-  const command = new StartInstancesCommand({
+  const command = new DescribeInstanceStatusCommand({
+    IncludeAllInstances: true,
     InstanceIds: [INSTANCE_ID],
   })
 

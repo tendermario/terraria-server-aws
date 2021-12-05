@@ -43,13 +43,21 @@ export class TerrariaServerStack extends cdk.Stack {
     }))
 
     const statusLambda = new lambda.NodejsFunction(this, 'TerrariaServerStatusLambda', {
-      entry: path.join(lambdaDir, 'status-lambda.js'),
+      entry: path.join(lambdaDir, 'status-lambda.ts'),
       handler: 'handler',
       functionName: 'TerrariaServerStatusLambda',
     })
+    statusLambda.role?.attachInlinePolicy(new iam.Policy(this, 'TerreriaEc2StatusPolicy', {
+      document: new iam.PolicyDocument({
+        statements: [new iam.PolicyStatement({
+          actions: ['ec2:DescribeInstanceStatus'],
+          resources: ['*'],
+        })],
+      }),
+    }))
 
     const authLambda = new lambda.NodejsFunction(this, 'TerrariaServerAuthLambda', {
-      entry: path.join(lambdaDir, 'auth-lambda.js'),
+      entry: path.join(lambdaDir, 'auth-lambda.ts'),
       handler: 'handler',
       functionName: 'TerrariaServerAuthLambda',
       environment: {
