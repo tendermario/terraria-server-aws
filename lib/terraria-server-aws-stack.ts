@@ -4,6 +4,7 @@ import * as path from 'path'
 
 import * as apigateway from '@aws-cdk/aws-apigateway'
 import * as cdk from '@aws-cdk/core'
+import * as iam from '@aws-cdk/aws-iam'
 import * as lambda from '@aws-cdk/aws-lambda-nodejs'
 import { Duration } from '@aws-cdk/core'
 
@@ -18,12 +19,28 @@ export class TerrariaServerStack extends cdk.Stack {
       handler: 'handler',
       functionName: 'StartTerrariaServerLambda',
     })
+    startLambda.role?.attachInlinePolicy(new iam.Policy(this, 'StartTerrariaEc2Policy', {
+      document: new iam.PolicyDocument({
+        statements: [new iam.PolicyStatement({
+          actions: ['ec2:StartInstances'],
+          resources: ['*'],
+        })],
+      }),
+    }))
 
     const stopLambda = new lambda.NodejsFunction(this, 'StopTerrariaServerLambda', {
-      entry: path.join(lambdaDir, 'stop-lambda.js'),
+      entry: path.join(lambdaDir, 'stop-lambda.ts'),
       handler: 'handler',
       functionName: 'StopTerrariaServerLambda',
     })
+    stopLambda.role?.attachInlinePolicy(new iam.Policy(this, 'StopTerrariaEc2Policy', {
+      document: new iam.PolicyDocument({
+        statements: [new iam.PolicyStatement({
+          actions: ['ec2:StopInstances'],
+          resources: ['*'],
+        })],
+      }),
+    }))
 
     const statusLambda = new lambda.NodejsFunction(this, 'TerrariaServerStatusLambda', {
       entry: path.join(lambdaDir, 'status-lambda.js'),
