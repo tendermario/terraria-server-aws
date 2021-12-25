@@ -73,6 +73,9 @@ const setButton = action => {
 }
 const serverStarting = () => {
   setPage({status: "Starting", buttonAction: "refresh"})
+  setTimeout(getServerStatus, 60*1000) // Check after 1, 2, 3 min
+  setTimeout(getServerStatus, 2*60*1000)
+  setTimeout(getServerStatus, 3*60*1000)
 }
 const serverOn = () => {
   setPage({status: "On", buttonAction: "Off"})
@@ -91,9 +94,4 @@ async function stopServer() {
   const Authorization = document.getElementById(passwordId)
   fetch(apiGatewayUrl + stop, {method: 'POST', headers: {Authorization}})
   serverStarting() // Should be stopping instead of starting but meh, almost the same
-}
-
-async function refreshServerStatus() {
-  const Authorization = document.getElementById(passwordId)
-  fetch(apiGatewayUrl + stop, {method: 'POST', headers: {Authorization}})
 }
