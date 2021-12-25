@@ -42,7 +42,7 @@ const setPage = ({status, buttonAction}) => {
   currentState.textContent = `Status: ${status}`
   document.title = `Terraria server - ${status}`
 
-  const buttonText = `Turn ${buttonAction}`
+  let buttonText = `Turn ${buttonAction}`
   if (buttonAction == "refresh") {
     buttonText = "Refresh status"
   }
@@ -72,7 +72,13 @@ const setButton = action => {
   }
 }
 const serverStarting = () => {
-  setPage({status: "Starting", buttonAction: "refresh"})
+  setPage({status: "Starting...", buttonAction: "refresh"})
+  setTimeout(getServerStatus, 60*1000) // Check after 1, 2, 3 min
+  setTimeout(getServerStatus, 2*60*1000)
+  setTimeout(getServerStatus, 3*60*1000)
+}
+const serverStopping = () => {
+  setPage({status: "Stopping...", buttonAction: "refresh"})
   setTimeout(getServerStatus, 60*1000) // Check after 1, 2, 3 min
   setTimeout(getServerStatus, 2*60*1000)
   setTimeout(getServerStatus, 3*60*1000)
@@ -86,12 +92,19 @@ const serverOff = () => {
 
 async function startServer() {
   const Authorization = document.getElementById(passwordId)
-  fetch(apiGatewayUrl + start, {method: 'POST', headers: {Authorization}})
-  serverStarting()
+  const response = await fetch(apiGatewayUrl + start, {method: 'POST', headers: {Authorization}})
+  console.log(response)
+  // Fixme: should be smarter
+  if (response == 200) {
+    serverStarting()
+  }
 }
 
 async function stopServer() {
   const Authorization = document.getElementById(passwordId)
-  fetch(apiGatewayUrl + stop, {method: 'POST', headers: {Authorization}})
-  serverStarting() // Should be stopping instead of starting but meh, almost the same
+  const response = await fetch(apiGatewayUrl + stop, {method: 'POST', headers: {Authorization}})
+  // Fixme: should be smarter
+  if (response == 200) {
+    serverStopping()
+  }
 }
