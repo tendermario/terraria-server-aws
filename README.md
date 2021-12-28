@@ -2,8 +2,6 @@
 
 This is a project for creating AWS resources to build up and run a Terraria server with CDK.
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
-
 ![Example](/images/terraria-frontend.png)
 
 Example working server can be found here: https://tendermario.github.io/terraria-server-aws
@@ -17,15 +15,6 @@ Example working server can be found here: https://tendermario.github.io/terraria
 - AWS: EC2, API Gateway, Lambda
 - Docker
 
-## Useful commands
-
- * `npm run build`   compile typescript to js
- * `npm run watch`   watch for changes and compile
- * `npm run test`    perform the jest unit tests
- * `cdk deploy`      deploy this stack to your default AWS account/region
- * `cdk diff`        compare deployed stack with current state
- * `cdk synth`       emits the synthesized CloudFormation template
-
 ## Infrastructure
 
 - API Gateway endpoint to start up, shut down, and get status of EC2 instance
@@ -37,7 +26,8 @@ Example working server can be found here: https://tendermario.github.io/terraria
 
 ## Prereq
 
-- aws-cli installed on your system
+- aws-cli installed on your system (`sudo apt install awscli` in ubuntu)
+- with your aws credentials set up with `aws setup`
 
 ## How to set up
 
@@ -48,7 +38,7 @@ Example working server can be found here: https://tendermario.github.io/terraria
 - Set up GitHub pages so that you can find this page at yourusername.github.io/terraria-server-aws
 - Feel free to play around with the styles to make it look better. It uses Tailwind for styles.
 
-### Setup backend and cdk infrastructure
+### Setup backend and CDK infrastructure
 
 - Copy .env.example to a new file in the same location named .env - edit the contents to your own details
 - Run `npm i` to install all the magic
@@ -56,6 +46,17 @@ Example working server can be found here: https://tendermario.github.io/terraria
 - Run `cdk deploy` to put them into your account
 - Check the status in the AWS console under CloudFormation. If anything messes up, you can delete it there and try again.
 - This should create the infrastructure mentioned above.
+
+## Useful CDK commands
+
+Note: The `cdk.json` file tells the CDK Toolkit how to execute your app. This isn't set up very intelligently just yet and basically has the default values still.
+
+ * `npm run build`   compile typescript to js
+ * `npm run watch`   watch for changes and compile
+ * `npm run test`    perform the jest unit tests
+ * `cdk deploy`      deploy this stack to your default AWS account/region
+ * `cdk diff`        compare deployed stack with current state
+ * `cdk synth`       emits the synthesized CloudFormation template
 
 ### Manual other things you need to set up (for now)
 
