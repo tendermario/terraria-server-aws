@@ -27,6 +27,8 @@ Example working server can be found here: https://tendermario.github.io/terraria
 ## Prereq
 
 - aws-cli installed on your system (`sudo apt install awscli` in ubuntu)
+- node, npm
+- aws-cdk globally `npm install -g aws-cdk`
 - with your aws credentials set up with `aws configure` (ref: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html)
   - This sets up the files located in ~/.aws/config / credentials. If you get any of it wrong, you can change it there
   - I recommend if you already have a terraria server to select that region. If you are starting from scratch, use the region closest to you
@@ -46,6 +48,7 @@ Example working server can be found here: https://tendermario.github.io/terraria
 - Copy .env.example to a new file in the same location named .env - edit the contents to your own details
 - Run `npm i` to install all the magic
 - Run `cdk synth` to create the CloudFormation templates - these are the blueprints for your infrastructure
+  - (TODO: Ugh this command isn't working for me right now halp)
 - Run `cdk deploy` to put them into your account
 - Check the status in the AWS console under CloudFormation. If anything messes up, you can delete it there and try again.
 - This should create the infrastructure mentioned above.
@@ -70,7 +73,7 @@ Note: The `cdk.json` file tells the CDK Toolkit how to execute your app. This is
 
 ## Todo
 
-- Programatically create an EC2 instance with Terraria with docker
+- Programatically create an EC2 instance with Terraria with docker (probably need to Bootstrap a bit https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html#getting_started_bootstrap)
 - Create security group to open 7777 for connecting to Terraria for any outside users
 - Create alarm for when the server has been on for more than 24 hours, 48 hrs, or something like that
 - Take an optional input file to take as the world to load onto that server
