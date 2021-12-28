@@ -4,6 +4,8 @@ This is a project for creating AWS resources to build up and run a Terraria serv
 
 The `cdk.json` file tells the CDK Toolkit how to execute your app.
 
+![Example](/images/terraria-example.png)
+
 ## Technology
 
 - GitHub pages
