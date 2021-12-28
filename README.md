@@ -14,6 +14,7 @@ Example working server can be found here: https://tendermario.github.io/terraria
 - AWS CDK
 - AWS: EC2, API Gateway, Lambda
 - Docker
+- Terraria docker image. I'm using https://hub.docker.com/r/ryshe/terraria/ here but https://hub.docker.com/r/beardedio/terraria looks fine too.
 
 ## Infrastructure
 
@@ -52,6 +53,53 @@ Example working server can be found here: https://tendermario.github.io/terraria
 - Run `cdk deploy` to put them into your account
 - Check the status in the AWS console under CloudFormation. If anything messes up, you can delete it there and try again.
 - This should create the infrastructure mentioned above.
+
+### Set up terraria on an EC2 instance
+
+#### Install docker:
+
+Ref: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/docker-basics.html
+
+```
+sudo yum update -y
+sudo amazon-linux-extras install docker
+sudo service docker start
+sudo usermod -a -G docker ec2-user
+```
+
+#### Option 1 - Build the terraria server:
+
+Ref: https://hub.docker.com/r/ryshe/terraria/
+
+Enter the ec2 console and run:
+
+```
+mkdir -p $HOME/terraria/world
+sudo docker run -it -p 7777:7777 --rm -v $HOME/terraria/world:/root/.local/share/Terraria/Worlds ryshe/terraria:latest -world /root/.local/share/Terraria/Worlds/world1.wld -autocreate 3 --log-opt max-size=200m
+```
+
+_Note: autocreate number is size of world, 1=small, 2=med, 3=large_
+
+#### Option 2 - Move a world to the server and run it:
+
+Enter the ec2 console and run:
+
+Find your world at: `%UserProfile%\Documents\My Games\Terraria\Worlds` on Windows
+
+```
+mkdir -p $HOME/terraria/world
+
+# Move the world file to ~/terraria/world and reference the .wld file in the below command... something like:
+scp -i ~/.ssh/<yourpemfile>.pem "/mnt/c/Users/mvien/OneDrive/Documents/my games/Terraria/Worlds/world1.wld" ec2-user@<your ec2 public ip>:~/terraria/world/
+
+sudo docker run -d --rm -p 7777:7777 -v $HOME/terraria/world:/root/.local/share/Terraria/Worlds --name="terraria" -e WORLD_FILENAME=world1.wld ryshe/terraria:latest --log-opt max-size=200m
+```
+
+You may then want to add a password and a ServerName to the config.json with `sudo vi ~/terraria/world/config.json`
+
+## Useful Docker commands
+
+* `docker logs terraria -f` Get the terraria logs - I found that t3.micro was not enough and would crash when trying to load up. That's already a full gb of ram, but maybe that's not enough for a medium or large word.
 
 ## Useful CDK commands
 
