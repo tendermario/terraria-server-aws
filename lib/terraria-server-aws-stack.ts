@@ -2,24 +2,45 @@ require('dotenv').config()
 const crypto = require('crypto')
 import * as path from 'path'
 
-import * as apigateway from '@aws-cdk/aws-apigateway'
-import * as cdk from '@aws-cdk/core'
-import * as iam from '@aws-cdk/aws-iam'
-import * as lambda from '@aws-cdk/aws-lambda-nodejs'
-import { Duration } from '@aws-cdk/core'
+import * as apigateway from 'aws-cdk-lib/aws-apigateway'
+import * as cdk from 'aws-cdk-lib'
+import * as iam from 'aws-cdk-lib/aws-iam'
+import * as lambda from 'aws-cdk-lib/aws-lambda-nodejs'
+import { Duration } from 'aws-cdk-lib'
+import * as ec2 from 'aws-cdk-lib/aws-ec2'
 
+const App = 'Terraria'
+
+// We create this under a class just to link together resources with 'this'
 export class TerrariaServerStack extends cdk.Stack {
-  constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: any, id: string, props?: cdk.StackProps) {
     super(scope, id, props)
 
+    // EC2 Instance
+    const vpc = new ec2.Vpc(this, `${App}VPC`, {})
+    const securityGroup = new ec2.SecurityGroup(this, `${App}SecurityGroup`, {
+      vpc: vpc,
+      description: `Access to server ports for ec2 instance`
+    })
+    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(7777), `Allow ${App} server connections`)
+    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.udp(7777), `Allow ${App} server connections`)
+    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22), 'allow ssh access from the world')
+    new ec2.Instance(this, `${App}Server`, {
+      vpc,
+      instanceType: ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.SMALL),
+      machineImage: ec2.MachineImage.latestAmazonLinux(),
+      securityGroup,
+    })
+
+    // Lambdas
     const lambdaDir = path.join(__dirname, 'lambdas')
 
-    const startLambda = new lambda.NodejsFunction(this, 'StartTerrariaServerLambda', {
+    const startLambda = new lambda.NodejsFunction(this, `Start${App}ServerLambda`, {
       entry: path.join(lambdaDir, 'start-lambda.ts'),
       handler: 'handler',
-      functionName: 'StartTerrariaServerLambda',
+      functionName: `Start${App}ServerLambda`,
     })
-    startLambda.role?.attachInlinePolicy(new iam.Policy(this, 'StartTerrariaEc2Policy', {
+    startLambda.role?.attachInlinePolicy(new iam.Policy(this, `Start${App}Ec2Policy`, {
       document: new iam.PolicyDocument({
         statements: [new iam.PolicyStatement({
           actions: ['ec2:StartInstances'],
@@ -28,12 +49,12 @@ export class TerrariaServerStack extends cdk.Stack {
       }),
     }))
 
-    const stopLambda = new lambda.NodejsFunction(this, 'StopTerrariaServerLambda', {
+    const stopLambda = new lambda.NodejsFunction(this, `Stop${App}ServerLambda`, {
       entry: path.join(lambdaDir, 'stop-lambda.ts'),
       handler: 'handler',
-      functionName: 'StopTerrariaServerLambda',
+      functionName: `Stop${App}ServerLambda`,
     })
-    stopLambda.role?.attachInlinePolicy(new iam.Policy(this, 'StopTerrariaEc2Policy', {
+    stopLambda.role?.attachInlinePolicy(new iam.Policy(this, `Stop${App}Ec2Policy`, {
       document: new iam.PolicyDocument({
         statements: [new iam.PolicyStatement({
           actions: ['ec2:StopInstances'],
@@ -42,12 +63,12 @@ export class TerrariaServerStack extends cdk.Stack {
       }),
     }))
 
-    const statusLambda = new lambda.NodejsFunction(this, 'TerrariaServerStatusLambda', {
+    const statusLambda = new lambda.NodejsFunction(this, `${App}ServerStatusLambda`, {
       entry: path.join(lambdaDir, 'status-lambda.ts'),
       handler: 'handler',
-      functionName: 'TerrariaServerStatusLambda',
+      functionName: `${App}ServerStatusLambda`,
     })
-    statusLambda.role?.attachInlinePolicy(new iam.Policy(this, 'TerreriaEc2StatusPolicy', {
+    statusLambda.role?.attachInlinePolicy(new iam.Policy(this, `${App}Ec2StatusPolicy`, {
       document: new iam.PolicyDocument({
         statements: [new iam.PolicyStatement({
           actions: ['ec2:DescribeInstanceStatus'],
@@ -56,23 +77,24 @@ export class TerrariaServerStack extends cdk.Stack {
       }),
     }))
 
-    const authLambda = new lambda.NodejsFunction(this, 'TerrariaServerAuthLambda', {
+    const authLambda = new lambda.NodejsFunction(this, `${App}ServerAuthLambda`, {
       entry: path.join(lambdaDir, 'auth-lambda.ts'),
       handler: 'handler',
-      functionName: 'TerrariaServerAuthLambda',
+      functionName: `${App}ServerAuthLambda`,
       environment: {
         'PASSWORD': process.env.PASSWORD ?? crypto.randomUUID()
       },
     })
 
-    const api = new apigateway.RestApi(this, 'TerrariaServerApi', {
+    // API Gateway
+    const api = new apigateway.RestApi(this, `${App}ServerApi`, {
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
         allowHeaders: ['Authorization'],
       }
     })
-    const authorizer = new apigateway.RequestAuthorizer(this, 'TerrariaServerAuthorizer', {
+    const authorizer = new apigateway.RequestAuthorizer(this, `${App}ServerAuthorizer`, {
       handler: authLambda,
       identitySources: [apigateway.IdentitySource.header('Authorization')],
       resultsCacheTtl: Duration.seconds(0),

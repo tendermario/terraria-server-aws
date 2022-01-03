@@ -39,20 +39,20 @@ Example working server can be found here: https://tendermario.github.io/terraria
 
 - Fork this repo
 
-### Setup Frontend
-
-- Set up GitHub pages so that you can find this page at yourusername.github.io/terraria-server-aws
-- Feel free to play around with the styles to make it look better. It uses Tailwind for styles.
-
 ### Setup backend and CDK infrastructure
 
 - Copy .env.example to a new file in the same location named .env - edit the contents to your own details
 - Run `npm i` to install all the magic
 - Run `cdk synth` to create the CloudFormation templates - these are the blueprints for your infrastructure
-  - (TODO: Ugh this command isn't working for me right now halp)
 - Run `cdk deploy` to put them into your account
 - Check the status in the AWS console under CloudFormation. If anything messes up, you can delete it there and try again.
 - This should create the infrastructure mentioned above.
+
+### Setup Frontend
+
+- Set up GitHub pages so that you can find this page at yourusername.github.io/terraria-server-aws
+- Feel free to play around with the styles to make it look better. It uses Tailwind for styles.
+- Update the API Gateway endpoints to your own to call the server statuses
 
 ### Set up terraria on an EC2 instance
 
@@ -99,7 +99,7 @@ You may then want to add a password and a ServerName to the config.json with `su
 
 ## Useful Docker commands
 
-* `docker logs terraria -f` Get the terraria logs - I found that t3.micro was not enough and would crash when trying to load up. That's already a full gb of ram, but maybe that's not enough for a medium or large word.
+* `docker logs terraria -f` Get the terraria logs - I found that t3.micro was not enough and would crash when trying to load up. That's already a full gb of ram, but maybe that's not enough for a medium or large word. t3.small should be ok?
 
 ## Useful CDK commands
 
