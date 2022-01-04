@@ -16,6 +16,26 @@ export class TerrariaServerStack extends cdk.Stack {
   constructor(scope: any, id: string, props?: cdk.StackProps) {
     super(scope, id, props)
 
+    // UserData start-up commands for EC2 Instance
+    const userData = new ec2.MultipartUserData()
+    const commandsUserData = ec2.UserData.forLinux()
+    userData.addUserDataPart(commandsUserData, ec2.MultipartBody.SHELL_SCRIPT, true)
+
+    const dockerCommands = [
+      'sudo yum update -y',
+      'sudo amazon-linux-extras install docker',
+      'sudo service docker start',
+      'sudo usermod -a -G docker ec2-user',
+    ]
+
+    const terrariaCommands = [
+      'mkdir -p $HOME/terraria/world',
+      'sudo docker run -it -p 7777:7777 --rm -v $HOME/terraria/world:/root/.local/share/Terraria/Worlds ryshe/terraria:latest -world /root/.local/share/Terraria/Worlds/world1.wld -autocreate 3 --log-opt max-size=200m',
+    ]
+
+    userData.addCommands(...dockerCommands)
+    userData.addCommands(...terrariaCommands)
+
     // EC2 Instance
     const vpc = new ec2.Vpc(this, `${App}VPC`, {})
     const securityGroup = new ec2.SecurityGroup(this, `${App}SecurityGroup`, {
@@ -25,11 +45,13 @@ export class TerrariaServerStack extends cdk.Stack {
     securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(7777), `Allow ${App} server connections`)
     securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.udp(7777), `Allow ${App} server connections`)
     securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22), 'allow ssh access from the world')
+
     new ec2.Instance(this, `${App}Server`, {
       vpc,
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.SMALL),
       machineImage: ec2.MachineImage.latestAmazonLinux(),
       securityGroup,
+      userData,
     })
 
     // Lambdas
