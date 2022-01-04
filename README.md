@@ -144,9 +144,14 @@ Note: The `cdk.json` file tells the CDK Toolkit how to execute your app. This is
 
 ### Manual other things you need to set up (for now)
 
-- Putting the terraria server world and settings up via console
+- Putting a premade terraria server world and settings up via console
+- Putting settings in via console
 
 ## Todo
 
 - Take an optional input file to take as the world to load onto that server
 - Make the hard-coded endpoint in the JS file be added programatically when building out the cdk and setting up the API Gateway endpoint
+- On startup, make the terraria server load up
+- Maybe make a healthcheck
+- Connect the lambda to the spin up/down system
+- Make some presets be baked into the cdk/.env file

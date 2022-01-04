@@ -55,7 +55,9 @@ export class TerrariaServerStack extends cdk.Stack {
       userDataCausesReplacement: true,
     })
     // EC2 Instance has Elastic IP
-    new ec2.CfnEIP(this, `${App}Ip`, {instanceId: ec2Instance.instanceId})
+    const eip = new ec2.CfnEIP(this, `${App}Ip`, {instanceId: ec2Instance.instanceId})
+    // List the IP in the output
+    new cdk.CfnOutput(this, `${App}IpAddress`, { value: eip.ref });
 
     // Lambdas
     const lambdaDir = path.join(__dirname, 'lambdas')
