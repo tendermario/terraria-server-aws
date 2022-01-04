@@ -37,9 +37,13 @@ export class TerrariaServerStack extends cdk.Stack {
     userData.addCommands(...terrariaCommands)
 
     // EC2 Instance
-    const vpc = new ec2.Vpc(this, `${App}VPC`, {})
+    const vpc = new ec2.Vpc(this, `${App}VPC`, {
+      enableDnsHostnames: true,
+      enableDnsSupport: true,
+    })
+
     const securityGroup = new ec2.SecurityGroup(this, `${App}SecurityGroup`, {
-      vpc: vpc,
+      vpc,
       description: `Access to server ports for ec2 instance`
     })
     securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(7777), `Allow ${App} server connections`)
@@ -48,10 +52,12 @@ export class TerrariaServerStack extends cdk.Stack {
 
     new ec2.Instance(this, `${App}Server`, {
       vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.SMALL),
       machineImage: ec2.MachineImage.latestAmazonLinux(),
       securityGroup,
       userData,
+      userDataCausesReplacement: true,
     })
 
     // Lambdas
