@@ -54,6 +54,7 @@ export class TerrariaServerStack extends cdk.Stack {
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.SMALL),
+      keyName: 'ec2-key-pair',
       machineImage: ec2.MachineImage.latestAmazonLinux(),
       securityGroup,
       userData,
