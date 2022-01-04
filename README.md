@@ -75,7 +75,14 @@ Enter the ec2 console and run:
 
 ```
 mkdir -p $HOME/terraria/world
-sudo docker run -it -p 7777:7777 --rm -v $HOME/terraria/world:/root/.local/share/Terraria/Worlds ryshe/terraria:latest -world /root/.local/share/Terraria/Worlds/world1.wld -autocreate 3 --log-opt max-size=200m
+sudo docker run -d --rm \
+--name="terraria" \
+-p 7777:7777 \
+-v $HOME/terraria/world:/root/.local/share/Terraria/Worlds \
+ryshe/terraria:latest \
+-world /root/.local/share/Terraria/Worlds/world1.wld \
+-autocreate 3 \
+--log-opt max-size=200m
 ```
 
 _Note: autocreate number is size of world, 1=small, 2=med, 3=large_
@@ -92,7 +99,14 @@ mkdir -p $HOME/terraria/world
 # Move the world file to ~/terraria/world and reference the .wld file in the below command... something like:
 scp -i ~/.ssh/<yourpemfile>.pem "/mnt/c/Users/mvien/OneDrive/Documents/my games/Terraria/Worlds/world1.wld" ec2-user@<your ec2 public ip>:~/terraria/world/
 
-sudo docker run -d --rm -p 7777:7777 -v $HOME/terraria/world:/root/.local/share/Terraria/Worlds --name="terraria" -e WORLD_FILENAME=world1.wld ryshe/terraria:latest --log-opt max-size=200m
+sudo docker run -d --rm \
+--name="terraria" \
+-p 7777:7777 \
+-v $HOME/terraria/world:/root/.local/share/Terraria/Worlds \
+ryshe/terraria:latest \
+-e WORLD_FILENAME=world1.wld \
+--log-opt max-size=200m \
+-disable-commands
 ```
 
 You may then want to add a password and a ServerName to the config.json with `sudo vi ~/terraria/world/config.json`
