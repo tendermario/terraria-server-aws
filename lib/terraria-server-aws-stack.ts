@@ -1,16 +1,22 @@
 require('dotenv').config()
 const crypto = require('crypto')
 import * as path from 'path'
-
-import * as apigateway from 'aws-cdk-lib/aws-apigateway'
-import * as cdk from 'aws-cdk-lib'
-import * as iam from 'aws-cdk-lib/aws-iam'
-import * as lambda from 'aws-cdk-lib/aws-lambda-nodejs'
-import { Duration } from 'aws-cdk-lib'
-import * as ec2 from 'aws-cdk-lib/aws-ec2'
 import { readFileSync } from 'fs'
 
+import * as cdk from 'aws-cdk-lib'
+import { Duration } from 'aws-cdk-lib'
+import * as apigateway from 'aws-cdk-lib/aws-apigateway'
+import * as iam from 'aws-cdk-lib/aws-iam'
+import * as lambda from 'aws-cdk-lib/aws-lambda-nodejs'
+import * as ec2 from 'aws-cdk-lib/aws-ec2'
+import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch'
+import { Topic, } from 'aws-cdk-lib/aws-sns'
+import { EmailSubscription } from 'aws-cdk-lib/aws-sns-subscriptions'
+import { SnsAction } from 'aws-cdk-lib/aws-cloudwatch-actions'
+
 const App = 'Terraria'
+const email = process.env.EMAIL ?? ""
+const password = process.env.PASSWORD ?? crypto.randomUUID()
 
 // We create this under a class just to link together resources with 'this'
 export class TerrariaServerStack extends cdk.Stack {
@@ -36,7 +42,7 @@ export class TerrariaServerStack extends cdk.Stack {
     securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.udp(7777), `Allow ${App} server connections`)
     securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22), 'allow ssh access from the world')
 
-    new ec2.Instance(this, `${App}Server`, {
+    const ec2Instance = new ec2.Instance(this, `Server`, {
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.SMALL),
@@ -48,6 +54,8 @@ export class TerrariaServerStack extends cdk.Stack {
       userData,
       userDataCausesReplacement: true,
     })
+    // EC2 Instance has Elastic IP
+    new ec2.CfnEIP(this, `${App}Ip`, {instanceId: ec2Instance.instanceId})
 
     // Lambdas
     const lambdaDir = path.join(__dirname, 'lambdas')
@@ -99,7 +107,7 @@ export class TerrariaServerStack extends cdk.Stack {
       handler: 'handler',
       functionName: `${App}ServerAuthLambda`,
       environment: {
-        'PASSWORD': process.env.PASSWORD ?? crypto.randomUUID()
+        'PASSWORD': password
       },
     })
 
@@ -128,5 +136,47 @@ export class TerrariaServerStack extends cdk.Stack {
     api.root
       .addResource('status')
       .addMethod('GET', new apigateway.LambdaIntegration(statusLambda))
+
+    // Alarms
+
+    // This topic is how emails get sent on alarm, just .addAlarmAction(emailAlarmAction) to attach it to an alarm
+    const emailAlarm = new Topic(this, 'EmailAlarms')
+    emailAlarm.addSubscription(new EmailSubscription(email))
+    const emailAlarmAction = new SnsAction(emailAlarm)
+
+    new cloudwatch.Alarm(this, `${App} ec2 instance high CPU usage`, {
+      metric: new cloudwatch.Metric({
+        namespace: 'TerrariaServerStack/Server',
+        metricName: 'CPUUtilization',
+        statistic: 'avg',
+        label: 'Average CPU usage %'
+      }),
+      evaluationPeriods: 2,
+      datapointsToAlarm: 2,
+      threshold: 98,
+      treatMissingData: cloudwatch.TreatMissingData.IGNORE,
+      alarmName: `${App} ec2 instance high CPU usage`,
+    }).addAlarmAction(emailAlarmAction)
+
+    // TODO: Create a memory usage check - might be a bit more complicated with MemoryUtilized and MemoryReserved metrics
+    // Or use `sudo yum install amazon-cloudwatch-agent` and add an IAM policy to let the instance report CloudWatch Agent metrics
+
+    // Create alarms on instance being on for 8 hours, 24 hours
+    const alarmOnUptime = (hour: number) => new cloudwatch.Alarm(this, `${App} ec2 instance on for ${hour} hours`, {
+      metric: new cloudwatch.Metric({
+        namespace: 'TerrariaServerStack/Server',
+        metricName: 'CPUUtilization',
+        statistic: 'avg',
+        label: 'Average CPU usage %',
+        period: Duration.hours(1),
+      }),
+      evaluationPeriods: hour,
+      datapointsToAlarm: hour,
+      threshold: 0,
+      treatMissingData: cloudwatch.TreatMissingData.IGNORE,
+      alarmName: `${App} ec2 instance on for ${hour} hours`,
+    }).addAlarmAction(emailAlarmAction)
+    
+    ;[8,16,24].forEach(alarmOnUptime)
   }
 }

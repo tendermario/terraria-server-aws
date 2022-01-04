@@ -20,6 +20,10 @@ Example working server can be found here: https://tendermario.github.io/terraria
 
 - API Gateway endpoint to start up, shut down, and get status of EC2 instance
 - A lambda that runs those above three actions
+- EC2
+- VPC and Elastic IP
+- CloudWatch Alarms
+- SNS Email topic
 
 ## Other features
 
@@ -32,10 +36,10 @@ Example working server can be found here: https://tendermario.github.io/terraria
 - aws-cdk globally `npm install -g aws-cdk`
 - with your aws credentials set up with `aws configure` (ref: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html)
   - This sets up the files located in ~/.aws/config / credentials. If you get any of it wrong, you can change it there
-  - I recommend if you already have a terraria server to select that region. If you are starting from scratch, use the region closest to you
+  - Usually you should use the region closest to you
   - You should probably create a user in AWS IAM with enough privileges to create many resources... if you're lazy, you can set Admin privileges to a user and create the key pair under it.
 
-## How to set up
+## Setup
 
 - Fork this repo
 
@@ -46,13 +50,26 @@ Example working server can be found here: https://tendermario.github.io/terraria
 - Run `cdk synth` to create the CloudFormation templates - these are the blueprints for your infrastructure
 - Run `cdk deploy` to put them into your account
 - Check the status in the AWS console under CloudFormation. If anything messes up, you can delete it there and try again.
-- This should create the infrastructure mentioned above.
+  - This should create the infrastructure mentioned above.
+  - If you're changing the cdk, use `cdk diff` to see what the changes are
+  - Note: if you change the EC2 server, it will terminate the old one and spin up a new one. Be sure you back up your world first if need be!
+- The above deploy should have an "Outputs" section that has a url like: `TerrariaServerStack.TerrariaServerApiEndpoint8D383585 = https://ky331xbqw4.execute-api.us-west-2.amazonaws.com/prod/` Note this url.
 
 ### Setup Frontend
 
-- Set up GitHub pages so that you can find this page at yourusername.github.io/terraria-server-aws
+- Set up GitHub pages so that you can find this page at yourusername.github.io/terraria-server-aws (or whatever your repo name is)
+- Use the above url output and paste it in place of the varaiable of the first line in `index.js`. This updates the API Gateway endpoints to your own endpoints to call the server statuses.
 - Feel free to play around with the styles to make it look better. It uses Tailwind for styles.
-- Update the API Gateway endpoints to your own to call the server statuses
+
+### Setup server
+
+You should have a large server waiting to get logged into at your EC2 instance IP address, but you may also want to:
+
+- Add a password and a ServerName to the config.json with `sudo vi ~/terraria/world/config.json`
+
+## Manual setup tips
+
+You don't need to do any of this, but it is a rough reference for how to set things up manually on a server:
 
 ### Set up terraria on an EC2 instance
 
@@ -82,7 +99,8 @@ sudo docker run -d --rm \
 ryshe/terraria:latest \
 -world /root/.local/share/Terraria/Worlds/world1.wld \
 -autocreate 3 \
---log-opt max-size=200m
+--log-opt max-size=200m \  # So the logs don't fill the disk space
+-disable-commands          # Without this, we ran into a confusing and hard to diagnose NPE
 ```
 
 _Note: autocreate number is size of world, 1=small, 2=med, 3=large_
@@ -109,8 +127,6 @@ ryshe/terraria:latest \
 -disable-commands
 ```
 
-You may then want to add a password and a ServerName to the config.json with `sudo vi ~/terraria/world/config.json`
-
 ## Useful Docker commands
 
 * `docker logs terraria -f` Get the terraria logs - I found that t3.micro was not enough and would crash when trying to load up. That's already a full gb of ram, but maybe that's not enough for a medium or large word. t3.small should be ok?
@@ -128,17 +144,9 @@ Note: The `cdk.json` file tells the CDK Toolkit how to execute your app. This is
 
 ### Manual other things you need to set up (for now)
 
-- An ec2 server with Docker loading Terraria
 - Putting the terraria server world and settings up via console
-- Opening port 7777 traffic to connect to the server
-- Maybe set up an elastic IP to attach to the isntance so the ip stays the same
 
 ## Todo
 
-- Programatically create an EC2 instance with Terraria with docker (probably need to Bootstrap a bit https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html#getting_started_bootstrap)
-- Create security group to open 7777 for connecting to Terraria for any outside users
-- Create alarm for when the server has been on for more than 24 hours, 48 hrs, or something like that
 - Take an optional input file to take as the world to load onto that server
-- Create an elastic IP to associate with the instance so the IP doesnt change on each starting of the server
 - Make the hard-coded endpoint in the JS file be added programatically when building out the cdk and setting up the API Gateway endpoint
-
