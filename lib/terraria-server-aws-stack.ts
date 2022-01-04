@@ -8,6 +8,7 @@ import * as iam from 'aws-cdk-lib/aws-iam'
 import * as lambda from 'aws-cdk-lib/aws-lambda-nodejs'
 import { Duration } from 'aws-cdk-lib'
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
+import { readFileSync } from 'fs'
 
 const App = 'Terraria'
 
@@ -17,24 +18,9 @@ export class TerrariaServerStack extends cdk.Stack {
     super(scope, id, props)
 
     // UserData start-up commands for EC2 Instance
-    const userData = new ec2.MultipartUserData()
-    const commandsUserData = ec2.UserData.forLinux()
-    userData.addUserDataPart(commandsUserData, ec2.MultipartBody.SHELL_SCRIPT, true)
-
-    const dockerCommands = [
-      'sudo yum update -y',
-      'sudo amazon-linux-extras install docker',
-      'sudo service docker start',
-      'sudo usermod -a -G docker ec2-user',
-    ]
-
-    const terrariaCommands = [
-      'mkdir -p $HOME/terraria/world',
-      'sudo docker run -it -p 7777:7777 --rm -v $HOME/terraria/world:/root/.local/share/Terraria/Worlds ryshe/terraria:latest -world /root/.local/share/Terraria/Worlds/world1.wld -autocreate 3 --log-opt max-size=200m',
-    ]
-
-    userData.addCommands(...dockerCommands)
-    userData.addCommands(...terrariaCommands)
+    const commands = readFileSync(path.join(__dirname, 'user-data.sh'), 'utf8')
+    const userData = ec2.UserData.forLinux()
+    userData.addCommands(commands)
 
     // EC2 Instance
     const vpc = new ec2.Vpc(this, `${App}VPC`, {
@@ -55,7 +41,9 @@ export class TerrariaServerStack extends cdk.Stack {
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.SMALL),
       keyName: 'ec2-key-pair',
-      machineImage: ec2.MachineImage.latestAmazonLinux(),
+      machineImage: new ec2.AmazonLinuxImage({
+        generation: ec2.AmazonLinuxGeneration.AMAZON_LINUX_2,
+      }),
       securityGroup,
       userData,
       userDataCausesReplacement: true,
