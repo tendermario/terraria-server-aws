@@ -1,7 +1,7 @@
 import { EC2Client, DescribeInstanceStatusCommand } from '@aws-sdk/client-ec2'
 import { APIGatewayProxyResult } from 'aws-lambda'
 
-const INSTANCE_ID = 'i-0113697bf55dbbd00'
+const {INSTANCE_ID} = process.env
 
 export const handler = async (): Promise<APIGatewayProxyResult> => {
   let result, statusCode

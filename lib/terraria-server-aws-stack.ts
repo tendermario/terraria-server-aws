@@ -54,8 +54,9 @@ export class TerrariaServerStack extends cdk.Stack {
       userData,
       userDataCausesReplacement: true,
     })
+    const {instanceId} = ec2Instance
     // EC2 Instance has Elastic IP
-    const eip = new ec2.CfnEIP(this, `${App}Ip`, {instanceId: ec2Instance.instanceId})
+    const eip = new ec2.CfnEIP(this, `${App}Ip`, {instanceId: instanceId})
     // List the IP in the output
     new cdk.CfnOutput(this, `${App}IpAddress`, { value: eip.ref });
 
@@ -66,6 +67,9 @@ export class TerrariaServerStack extends cdk.Stack {
       entry: path.join(lambdaDir, 'start-lambda.ts'),
       handler: 'handler',
       functionName: `Start${App}ServerLambda`,
+      environment: {
+        'INSTANCE_ID': instanceId,
+      },
     })
     startLambda.role?.attachInlinePolicy(new iam.Policy(this, `Start${App}Ec2Policy`, {
       document: new iam.PolicyDocument({
@@ -80,6 +84,9 @@ export class TerrariaServerStack extends cdk.Stack {
       entry: path.join(lambdaDir, 'stop-lambda.ts'),
       handler: 'handler',
       functionName: `Stop${App}ServerLambda`,
+      environment: {
+        'INSTANCE_ID': instanceId,
+      },
     })
     stopLambda.role?.attachInlinePolicy(new iam.Policy(this, `Stop${App}Ec2Policy`, {
       document: new iam.PolicyDocument({
@@ -94,6 +101,9 @@ export class TerrariaServerStack extends cdk.Stack {
       entry: path.join(lambdaDir, 'status-lambda.ts'),
       handler: 'handler',
       functionName: `${App}ServerStatusLambda`,
+      environment: {
+        'INSTANCE_ID': instanceId,
+      },
     })
     statusLambda.role?.attachInlinePolicy(new iam.Policy(this, `${App}Ec2StatusPolicy`, {
       document: new iam.PolicyDocument({

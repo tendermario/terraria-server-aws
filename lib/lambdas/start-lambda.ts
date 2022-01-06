@@ -1,12 +1,12 @@
 import { EC2Client, StartInstancesCommand } from '@aws-sdk/client-ec2'
 import { APIGatewayProxyResult } from 'aws-lambda'
 
-const INSTANCE_ID = 'i-0113697bf55dbbd00'
+const {INSTANCE_ID} = process.env
 
 export const handler = async (): Promise<APIGatewayProxyResult> => {
   let result, statusCode
   try {
-    const ec2Result = await spinUpInstance()
+    const ec2Result = await spinUpInstance(INSTANCE_ID)
     result = ec2Result.StartingInstances
       ?.find(i => i.InstanceId === INSTANCE_ID)
       ?.CurrentState?.Name
@@ -30,10 +30,10 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
 
 // Starts up an EC2 instance.
 // For now, we are targeting an instance that we've already created.
-const spinUpInstance = async () => {
+const spinUpInstance = async (InstanceId: any) => {
   const client = new EC2Client({ region: 'us-west-2' })
   const command = new StartInstancesCommand({
-    InstanceIds: [INSTANCE_ID],
+    InstanceIds: [InstanceId],
   })
 
   return await client.send(command)

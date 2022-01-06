@@ -1,12 +1,12 @@
 import { EC2Client, StopInstancesCommand } from '@aws-sdk/client-ec2'
 import { APIGatewayProxyResult } from 'aws-lambda'
 
-const INSTANCE_ID = 'i-0113697bf55dbbd00'
+const {INSTANCE_ID} = process.env
 
 export const handler = async (): Promise<APIGatewayProxyResult> => {
   let result, statusCode
   try {
-    const ec2Result = await spinDownInstance()
+    const ec2Result = await spinDownInstance(INSTANCE_ID)
     result = ec2Result.StoppingInstances
       ?.find(i => i.InstanceId === INSTANCE_ID)
       ?.CurrentState?.Name
@@ -30,10 +30,10 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
 
 // Stops an EC2 instance.
 // For now, we are targeting an instance that we've already created.
-const spinDownInstance = async () => {
+const spinDownInstance = async (instanceId: any) => {
   const client = new EC2Client({ region: 'us-west-2' })
   const command = new StopInstancesCommand({
-    InstanceIds: [INSTANCE_ID],
+    InstanceIds: [instanceId],
   })
 
   return await client.send(command)

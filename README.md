@@ -90,17 +90,12 @@ Ref: https://hub.docker.com/r/ryshe/terraria/
 
 Enter the ec2 console and run:
 
+
+
+
+
 ```
-mkdir -p $HOME/terraria/world
-sudo docker run -d --rm \
---name="terraria" \
--p 7777:7777 \
--v $HOME/terraria/world:/root/.local/share/Terraria/Worlds \
-ryshe/terraria:latest \
--world /root/.local/share/Terraria/Worlds/world1.wld \
--autocreate 3 \
---log-opt max-size=200m \  # So the logs don't fill the disk space
--disable-commands          # Without this, we ran into a confusing and hard to diagnose NPE
+sudo docker run -d --rm --name="terraria" -p 7777:7777 -v $HOME/terraria/world:/root/.local/share/Terraria/Worlds ryshe/terraria:latest -world /root/.local/share/Terraria/Worlds/world1.wld -autocreate 3 --log-opt max-size=200m -disable-commands
 ```
 
 _Note: autocreate number is size of world, 1=small, 2=med, 3=large_
@@ -117,14 +112,7 @@ mkdir -p $HOME/terraria/world
 # Move the world file to ~/terraria/world and reference the .wld file in the below command... something like:
 scp -i ~/.ssh/<yourpemfile>.pem "/mnt/c/Users/mvien/OneDrive/Documents/my games/Terraria/Worlds/world1.wld" ec2-user@<your ec2 public ip>:~/terraria/world/
 
-sudo docker run -d --rm \
---name="terraria" \
--p 7777:7777 \
--v $HOME/terraria/world:/root/.local/share/Terraria/Worlds \
-ryshe/terraria:latest \
--e WORLD_FILENAME=world1.wld \
---log-opt max-size=200m \
--disable-commands
+sudo docker run --rm --name="terraria" -p 7777:7777 -v $HOME/terraria/world:/root/.local/share/Terraria/Worlds ryshe/terraria:latest -world /root/.local/share/Terraria/Worlds/world1.wld --log-opt max-size=200m -disable-commands
 ```
 
 ## Useful Docker commands
@@ -151,7 +139,4 @@ Note: The `cdk.json` file tells the CDK Toolkit how to execute your app. This is
 
 - Take an optional input file to take as the world to load onto that server
 - Make the hard-coded endpoint in the JS file be added programatically when building out the cdk and setting up the API Gateway endpoint
-- On startup, make the terraria server load up
 - Maybe make a healthcheck
-- Connect the lambda to the spin up/down system
-- Make some presets be baked into the cdk/.env file
