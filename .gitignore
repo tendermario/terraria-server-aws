@@ -5,6 +5,8 @@ test/*.js
 *.d.ts
 node_modules
 s3-files/*
+# Ignore all folders with pattern server-* for hosting server pages behind these paths
+server-*
 
 # CDK asset staging directory
 .cdk.staging

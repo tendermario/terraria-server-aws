@@ -1,7 +1,7 @@
 require('dotenv').config()
 const crypto = require('crypto')
 import * as path from 'path'
-import { readFileSync } from 'fs'
+import { readFileSync, existsSync } from 'fs'
 
 import * as cdk from 'aws-cdk-lib'
 import { Duration } from 'aws-cdk-lib'
@@ -33,13 +33,16 @@ export class TerrariaServerStack extends cdk.Stack {
     super(scope, id, props)
 
     // S3
-    const bucket = new s3.Bucket(this, 'ServerFiles', {versioned: true});
+    const bucket = new s3.Bucket(this, 'ServerFiles', {versioned: true})
+    const assetFiles = `./s3-files/${id.toLowerCase()}`
 
-    new s3deploy.BucketDeployment(this, `${App}${id}DeployFiles`, {
-      sources: [s3deploy.Source.asset('./s3-files')],
-      destinationBucket: bucket,
-      prune: false, // This makes it not delete the files if they already exist in s3
-    });
+    if (existsSync(assetFiles)) {
+      new s3deploy.BucketDeployment(this, `${App}${id}DeployFiles`, {
+        sources: [s3deploy.Source.asset(assetFiles)],
+        destinationBucket: bucket,
+        prune: false, // This makes it not delete the files if they already exist in s3
+      });
+    }
 
     // UserData start-up commands for EC2 Instance
     const commands = readFileSync(path.join(__dirname, 'user-data.sh'), 'utf8')
@@ -95,7 +98,7 @@ export class TerrariaServerStack extends cdk.Stack {
     // Lambdas
     const lambdaDir = path.join(__dirname, 'lambdas')
 
-    const startLambda = new lambda.NodejsFunction(this, `Start${App}ServerLambda`, {
+    const startLambda = new lambda.NodejsFunction(this, `Start${App}${id}ServerLambda`, {
       entry: path.join(lambdaDir, 'start-lambda.ts'),
       handler: 'handler',
       functionName: `Start${App}ServerLambda`,
@@ -103,7 +106,7 @@ export class TerrariaServerStack extends cdk.Stack {
         'INSTANCE_ID': instanceId,
       },
     })
-    startLambda.role?.attachInlinePolicy(new iam.Policy(this, `Start${App}Ec2Policy`, {
+    startLambda.role?.attachInlinePolicy(new iam.Policy(this, `Start${App}${id}Ec2Policy`, {
       document: new iam.PolicyDocument({
         statements: [new iam.PolicyStatement({
           actions: ['ec2:StartInstances'],
@@ -112,7 +115,7 @@ export class TerrariaServerStack extends cdk.Stack {
       }),
     }))
 
-    const stopLambda = new lambda.NodejsFunction(this, `Stop${App}ServerLambda`, {
+    const stopLambda = new lambda.NodejsFunction(this, `Stop${App}${id}ServerLambda`, {
       entry: path.join(lambdaDir, 'stop-lambda.ts'),
       handler: 'handler',
       functionName: `Stop${App}ServerLambda`,
@@ -120,7 +123,7 @@ export class TerrariaServerStack extends cdk.Stack {
         'INSTANCE_ID': instanceId,
       },
     })
-    stopLambda.role?.attachInlinePolicy(new iam.Policy(this, `Stop${App}Ec2Policy`, {
+    stopLambda.role?.attachInlinePolicy(new iam.Policy(this, `Stop${App}${id}Ec2Policy`, {
       document: new iam.PolicyDocument({
         statements: [new iam.PolicyStatement({
           actions: ['ec2:StopInstances'],
@@ -129,7 +132,7 @@ export class TerrariaServerStack extends cdk.Stack {
       }),
     }))
 
-    const statusLambda = new lambda.NodejsFunction(this, `${App}ServerStatusLambda`, {
+    const statusLambda = new lambda.NodejsFunction(this, `${App}${id}ServerStatusLambda`, {
       entry: path.join(lambdaDir, 'status-lambda.ts'),
       handler: 'handler',
       functionName: `${App}ServerStatusLambda`,
@@ -137,7 +140,7 @@ export class TerrariaServerStack extends cdk.Stack {
         'INSTANCE_ID': instanceId,
       },
     })
-    statusLambda.role?.attachInlinePolicy(new iam.Policy(this, `${App}Ec2StatusPolicy`, {
+    statusLambda.role?.attachInlinePolicy(new iam.Policy(this, `${App}${id}Ec2StatusPolicy`, {
       document: new iam.PolicyDocument({
         statements: [new iam.PolicyStatement({
           actions: ['ec2:DescribeInstanceStatus'],
@@ -146,7 +149,7 @@ export class TerrariaServerStack extends cdk.Stack {
       }),
     }))
 
-    const authLambda = new lambda.NodejsFunction(this, `${App}ServerAuthLambda`, {
+    const authLambda = new lambda.NodejsFunction(this, `${App}${id}ServerAuthLambda`, {
       entry: path.join(lambdaDir, 'auth-lambda.ts'),
       handler: 'handler',
       functionName: `${App}ServerAuthLambda`,
