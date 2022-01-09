@@ -31,10 +31,21 @@ export class TerrariaServerStack extends cdk.Stack {
   constructor(scope: any, id: string, props?: cdk.StackProps) {
     super(scope, id, props)
 
+    // S3
+    const bucket = new s3.Bucket(this, s3BucketName, {versioned: true});
+
+    new s3deploy.BucketDeployment(this, `${App}${id}DeployFiles`, {
+      sources: [s3deploy.Source.asset('./s3-files')],
+      destinationBucket: bucket,
+      prune: false, // Don't delete the files if they already exist in s3
+    });
+
     // UserData start-up commands for EC2 Instance
     const commands = readFileSync(path.join(__dirname, 'user-data.sh'), 'utf8')
+    const commandsReplaced = commands.replace(new RegExp('s3BucketName', 'g'), bucket.bucketName)
+
     const userData = ec2.UserData.forLinux()
-    userData.addCommands(commands)
+    userData.addCommands(commandsReplaced)
 
     // EC2 Instance
     const vpc = new ec2.Vpc(this, `${App}VPC`, {
@@ -62,6 +73,16 @@ export class TerrariaServerStack extends cdk.Stack {
       userData,
       userDataCausesReplacement: true,
     })
+
+    // ec2 access S3
+    ec2Instance.role?.attachInlinePolicy(new iam.Policy(this, `Access${App}${id}S3`, {
+      document: new iam.PolicyDocument({
+        statements: [new iam.PolicyStatement({
+          actions: ['s3:*'],
+          resources: [bucket.bucketArn],
+        })],
+      }),
+    }))
 
     const {instanceId} = ec2Instance
     // EC2 Instance has Elastic IP
@@ -131,36 +152,6 @@ export class TerrariaServerStack extends cdk.Stack {
         'PASSWORD': UIpassword
       },
     })
-
-    // S3
-    const bucket = new s3.Bucket(this, s3BucketName, {versioned: true});
-
-    new s3deploy.BucketDeployment(this, `${App}${id}DeployFiles`, {
-      sources: [s3deploy.Source.asset('./s3-files')],
-      destinationBucket: bucket,
-      prune: false, // Don't delete the files if they already exist in s3
-    });
-
-    // ec2 access S3
-    ec2Instance.role?.attachInlinePolicy(new iam.Policy(this, `Access${App}${id}S3`, {
-      document: new iam.PolicyDocument({
-        statements: [new iam.PolicyStatement({
-          actions: ['s3:*'],
-          resources: [`${bucket.bucketArn}/*`],
-        })],
-      }),
-    }))
-    // ec2 tag to lookup bucket
-    Tags.of(ec2Instance).add('s3Bucket', bucket.bucketName)
-    // ec2 ability to access tags, which gets used in user-data.sh
-    ec2Instance.role?.attachInlinePolicy(new iam.Policy(this, `ec2GetTags${App}${id}S3`, {
-      document: new iam.PolicyDocument({
-        statements: [new iam.PolicyStatement({
-          actions: ['ec2:DescribeTags'],
-          resources: [`*`],
-        })],
-      }),
-    }))
 
     // API Gateway
     const api = new apigateway.RestApi(this, `${App}ServerApi`, {
