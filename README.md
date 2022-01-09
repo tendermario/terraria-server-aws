@@ -12,7 +12,7 @@ Example working server can be found here: https://tendermario.github.io/terraria
 - Tailwind
 - AWS cli
 - AWS CDK
-- AWS: EC2, API Gateway, Lambda
+- AWS for infrastructure
 - Docker
 - Terraria docker image. I'm using https://hub.docker.com/r/ryshe/terraria/ here but https://hub.docker.com/r/beardedio/terraria looks fine too.
 
@@ -22,8 +22,9 @@ Example working server can be found here: https://tendermario.github.io/terraria
 - A lambda that runs those above three actions
 - EC2
 - VPC and Elastic IP
-- CloudWatch Alarms
+- CloudWatch Alarms to let you know the server is still running
 - SNS Email topic
+- S3
 
 ## Other features
 
@@ -45,8 +46,10 @@ Example working server can be found here: https://tendermario.github.io/terraria
 
 ### Setup backend and CDK infrastructure
 
-- Copy .env.example to a new file in the same location named .env - edit the contents to your own details
+- Copy `.env.example` to a new file in the same location named `.env` - edit the contents to your own details
 - Run `npm i` to install all the magic
+- Optional: Add your world file as world.wld in s3-files, and update the config.json to have a server name and password
+  - You can find your world file at: `%UserProfile%\Documents\My Games\Terraria\Worlds` on Windows
 - Run `cdk synth` to create the CloudFormation templates - these are the blueprints for your infrastructure
 - Run `cdk deploy` to put them into your account
 - Check the status in the AWS console under CloudFormation. If anything messes up, you can delete it there and try again.
@@ -54,6 +57,7 @@ Example working server can be found here: https://tendermario.github.io/terraria
   - If you're changing the cdk, use `cdk diff` to see what the changes are
   - Note: if you change the EC2 server, it will terminate the old one and spin up a new one. Be sure you back up your world first if need be!
 - The above deploy should have an "Outputs" section that has a url like: `TerrariaServerStack.TerrariaServerApiEndpoint8D383585 = https://ky331xbqw4.execute-api.us-west-2.amazonaws.com/prod/` Note this url.
+- The outputs will also show the elastic IP that you will use to log into the Terraria server with
 
 ### Setup Frontend
 
@@ -63,9 +67,31 @@ Example working server can be found here: https://tendermario.github.io/terraria
 
 ### Setup server
 
-You should have a large server waiting to get logged into at your EC2 instance IP address, but you may also want to:
+If you did not place a world file in the s3-files, you should have a server waiting to get logged into at your EC2 instance IP address, but you may also want to:
 
 - Add a password and a ServerName to the config.json with `sudo vi ~/terraria/world/config.json`
+## Useful CDK commands
+
+Note: The `cdk.json` file tells the CDK Toolkit how to execute your app. This isn't set up very intelligently just yet and basically has the default values still.
+
+ * `npm run build`   compile typescript to js
+ * `npm run watch`   watch for changes and compile
+ * `npm run test`    perform the jest unit tests
+ * `cdk synth`       emits the synthesized CloudFormation template
+ * `cdk diff`        compare deployed stack with current state
+ * `cdk deploy`      deploy this stack to your default AWS account/region
+
+## Todo
+
+- Make the hard-coded endpoint in the JS file be added programatically when building out the cdk and setting up the API Gateway endpoint
+- Maybe make a healthcheck
+
+
+
+
+
+
+
 
 ## Manual setup tips
 
@@ -90,53 +116,23 @@ Ref: https://hub.docker.com/r/ryshe/terraria/
 
 Enter the ec2 console and run:
 
-
-
-
-
 ```
-sudo docker run -d --rm --name="terraria" -p 7777:7777 -v $HOME/terraria/world:/root/.local/share/Terraria/Worlds ryshe/terraria:latest -world /root/.local/share/Terraria/Worlds/world1.wld -autocreate 3 --log-opt max-size=200m -disable-commands
+docker run -d --rm --name="terraria" -p 7777:7777 -v $HOME/terraria/world:/root/.local/share/Terraria/Worlds ryshe/terraria:latest -world /root/.local/share/Terraria/Worlds/world.wld -autocreate 3 --log-opt max-size=200m -disable-commands
 ```
-
-_Note: autocreate number is size of world, 1=small, 2=med, 3=large_
 
 #### Option 2 - Move a world to the server and run it:
 
 Enter the ec2 console and run:
 
-Find your world at: `%UserProfile%\Documents\My Games\Terraria\Worlds` on Windows
-
 ```
 mkdir -p $HOME/terraria/world
 
 # Move the world file to ~/terraria/world and reference the .wld file in the below command... something like:
-scp -i ~/.ssh/<yourpemfile>.pem "/mnt/c/Users/mvien/OneDrive/Documents/my games/Terraria/Worlds/world1.wld" ec2-user@<your ec2 public ip>:~/terraria/world/
+scp -i ~/.ssh/<yourpemfile>.pem "/mnt/c/Users/mvien/OneDrive/Documents/my games/Terraria/Worlds/world.wld" ec2-user@<your ec2 public ip>:~/terraria/world/
 
-sudo docker run --rm --name="terraria" -p 7777:7777 -v $HOME/terraria/world:/root/.local/share/Terraria/Worlds ryshe/terraria:latest -world /root/.local/share/Terraria/Worlds/world1.wld --log-opt max-size=200m -disable-commands
+docker run --rm -d --name="terraria" -p 7777:7777 -v $HOME/terraria/world:/root/.local/share/Terraria/Worlds ryshe/terraria:latest -world /root/.local/share/Terraria/Worlds/world.wld --log-opt max-size=200m -disable-commands
 ```
 
 ## Useful Docker commands
 
-* `docker logs terraria -f` Get the terraria logs - I found that t3.micro was not enough and would crash when trying to load up. That's already a full gb of ram, but maybe that's not enough for a medium or large word. t3.small should be ok?
-
-## Useful CDK commands
-
-Note: The `cdk.json` file tells the CDK Toolkit how to execute your app. This isn't set up very intelligently just yet and basically has the default values still.
-
- * `npm run build`   compile typescript to js
- * `npm run watch`   watch for changes and compile
- * `npm run test`    perform the jest unit tests
- * `cdk deploy`      deploy this stack to your default AWS account/region
- * `cdk diff`        compare deployed stack with current state
- * `cdk synth`       emits the synthesized CloudFormation template
-
-### Manual other things you need to set up (for now)
-
-- Putting a premade terraria server world and settings up via console
-- Putting settings in via console
-
-## Todo
-
-- Take an optional input file to take as the world to load onto that server
-- Make the hard-coded endpoint in the JS file be added programatically when building out the cdk and setting up the API Gateway endpoint
-- Maybe make a healthcheck
+* `docker logs terraria -f` Get the terraria logs - I found that t3.micro was not enough and would crash when trying to load up. That's already a full gb of ram, but maybe that's not enough for a medium or large word. t3.small should be ok

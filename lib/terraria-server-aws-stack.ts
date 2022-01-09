@@ -4,19 +4,27 @@ import * as path from 'path'
 import { readFileSync } from 'fs'
 
 import * as cdk from 'aws-cdk-lib'
-import { Duration } from 'aws-cdk-lib'
+import { Duration, Tags } from 'aws-cdk-lib'
 import * as apigateway from 'aws-cdk-lib/aws-apigateway'
 import * as iam from 'aws-cdk-lib/aws-iam'
 import * as lambda from 'aws-cdk-lib/aws-lambda-nodejs'
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch'
-import { Topic, } from 'aws-cdk-lib/aws-sns'
+import { Topic } from 'aws-cdk-lib/aws-sns'
 import { EmailSubscription } from 'aws-cdk-lib/aws-sns-subscriptions'
 import { SnsAction } from 'aws-cdk-lib/aws-cloudwatch-actions'
+import * as s3 from 'aws-cdk-lib/aws-s3'
+import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment'
 
 const App = 'Terraria'
 const email = process.env.EMAIL ?? ""
-const password = process.env.PASSWORD ?? crypto.randomUUID()
+const UIpassword = process.env.UIPASSWORD ?? crypto.randomUUID()
+const s3BucketName = process.env.S3BUCKETNAME ?? "" //  Update this if you deploy this again in another environment!
+// We also will need to copy this value to user-data.sh for now to target what s3 bucket we are using in the instance
+
+if (!email || !s3BucketName) {
+  throw "Should have an email and s3 bucket name created in a .env file, see Readme"
+}
 
 // We create this under a class just to link together resources with 'this'
 export class TerrariaServerStack extends cdk.Stack {
@@ -54,6 +62,7 @@ export class TerrariaServerStack extends cdk.Stack {
       userData,
       userDataCausesReplacement: true,
     })
+
     const {instanceId} = ec2Instance
     // EC2 Instance has Elastic IP
     const eip = new ec2.CfnEIP(this, `${App}Ip`, {instanceId: instanceId})
@@ -119,9 +128,39 @@ export class TerrariaServerStack extends cdk.Stack {
       handler: 'handler',
       functionName: `${App}ServerAuthLambda`,
       environment: {
-        'PASSWORD': password
+        'PASSWORD': UIpassword
       },
     })
+
+    // S3
+    const bucket = new s3.Bucket(this, s3BucketName, {versioned: true});
+
+    new s3deploy.BucketDeployment(this, `${App}${id}DeployFiles`, {
+      sources: [s3deploy.Source.asset('./s3-files')],
+      destinationBucket: bucket,
+      prune: false, // Don't delete the files if they already exist in s3
+    });
+
+    // ec2 access S3
+    ec2Instance.role?.attachInlinePolicy(new iam.Policy(this, `Access${App}${id}S3`, {
+      document: new iam.PolicyDocument({
+        statements: [new iam.PolicyStatement({
+          actions: ['s3:*'],
+          resources: [`${bucket.bucketArn}/*`],
+        })],
+      }),
+    }))
+    // ec2 tag to lookup bucket
+    Tags.of(ec2Instance).add('s3Bucket', bucket.bucketName)
+    // ec2 ability to access tags, which gets used in user-data.sh
+    ec2Instance.role?.attachInlinePolicy(new iam.Policy(this, `ec2GetTags${App}${id}S3`, {
+      document: new iam.PolicyDocument({
+        statements: [new iam.PolicyStatement({
+          actions: ['ec2:DescribeTags'],
+          resources: [`*`],
+        })],
+      }),
+    }))
 
     // API Gateway
     const api = new apigateway.RestApi(this, `${App}ServerApi`, {
@@ -131,7 +170,7 @@ export class TerrariaServerStack extends cdk.Stack {
         allowHeaders: ['Authorization'],
       }
     })
-    const authorizer = new apigateway.RequestAuthorizer(this, `${App}ServerAuthorizer`, {
+    const authorizer = new apigateway.RequestAuthorizer(this, `${App}${id}ServerAuthorizer`, {
       handler: authLambda,
       identitySources: [apigateway.IdentitySource.header('Authorization')],
       resultsCacheTtl: Duration.seconds(0),
