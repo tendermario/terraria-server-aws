@@ -126,7 +126,7 @@ async function stopServer() {
     const response = await fetch(apiGatewayUrl + stop, {method: 'POST', headers: {Authorization}})
     if (response.ok) {
       passwordCorrect()
-      serverStarting()
+      serverStopping()
     }
   } catch (e) {
     passwordIncorrect()

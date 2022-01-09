@@ -29,6 +29,8 @@ Example working server can be found here: https://tendermario.github.io/terraria
 ## Other features
 
 - A frontend page to turn on/off your server
+- Backup of the server files to S3 every 10 minutes
+- Auto Terraria server start on server boot
 
 ## Prereq
 
@@ -48,8 +50,10 @@ Example working server can be found here: https://tendermario.github.io/terraria
 
 - Copy `.env.example` to a new file in the same location named `.env` - edit the contents to your own details
 - Run `npm i` to install all the magic
-- Optional: Add your world file as world.wld in s3-files, and update the config.json to have a server name and password
+- Optional: Add your world file as `world.wld` in s3-files, and update the `config.json` to have a server name and password if you want
   - You can find your world file at: `%UserProfile%\Documents\My Games\Terraria\Worlds` on Windows
+  - If you want it to have a custom world.wld name, you can update the variable in `terraria-server-aws-stack.ts`
+  - All files in s3-files will be uploaded to S3, so if you want to put multiple worlds in there to be accessible from the server, feel free.
 - Run `cdk synth` to create the CloudFormation templates - these are the blueprints for your infrastructure
 - Run `cdk deploy` to put them into your account
 - Check the status in the AWS console under CloudFormation. If anything messes up, you can delete it there and try again.
@@ -74,28 +78,28 @@ If you did not place a world file in the s3-files, you should have a server wait
 
 Note: The `cdk.json` file tells the CDK Toolkit how to execute your app. This isn't set up very intelligently just yet and basically has the default values still.
 
- * `npm run build`   compile typescript to js
- * `npm run watch`   watch for changes and compile
- * `npm run test`    perform the jest unit tests
  * `cdk synth`       emits the synthesized CloudFormation template
  * `cdk diff`        compare deployed stack with current state
  * `cdk deploy`      deploy this stack to your default AWS account/region
+
+Commands I never used, but will share anyway:
+
+ * `npm run build`   compile typescript to js
+ * `npm run watch`   watch for changes and compile
+ * `npm run test`    perform the jest unit tests
 
 ## Todo
 
 - Make the hard-coded endpoint in the JS file be added programatically when building out the cdk and setting up the API Gateway endpoint
 - Maybe make a healthcheck
 
-
-
-
-
-
-
-
 ## Manual setup tips
 
 You don't need to do any of this, but it is a rough reference for how to set things up manually on a server:
+
+### Useful Docker commands
+
+* `docker logs terraria -f` Get the terraria logs - I found that t3.micro was not enough and would crash when trying to load up. That's already a full gb of ram, but maybe that's not enough for a medium or large word. t3.small should be ok
 
 ### Set up terraria on an EC2 instance
 
@@ -132,7 +136,3 @@ scp -i ~/.ssh/<yourpemfile>.pem "/mnt/c/Users/mvien/OneDrive/Documents/my games/
 
 docker run --rm -d --name="terraria" -p 7777:7777 -v $HOME/terraria/world:/root/.local/share/Terraria/Worlds ryshe/terraria:latest -world /root/.local/share/Terraria/Worlds/world.wld --log-opt max-size=200m -disable-commands
 ```
-
-## Useful Docker commands
-
-* `docker logs terraria -f` Get the terraria logs - I found that t3.micro was not enough and would crash when trying to load up. That's already a full gb of ram, but maybe that's not enough for a medium or large word. t3.small should be ok

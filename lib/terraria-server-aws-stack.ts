@@ -4,7 +4,7 @@ import * as path from 'path'
 import { readFileSync } from 'fs'
 
 import * as cdk from 'aws-cdk-lib'
-import { Duration, Tags } from 'aws-cdk-lib'
+import { Duration } from 'aws-cdk-lib'
 import * as apigateway from 'aws-cdk-lib/aws-apigateway'
 import * as iam from 'aws-cdk-lib/aws-iam'
 import * as lambda from 'aws-cdk-lib/aws-lambda-nodejs'
@@ -19,11 +19,12 @@ import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment'
 const App = 'Terraria'
 const email = process.env.EMAIL ?? ""
 const UIpassword = process.env.UIPASSWORD ?? crypto.randomUUID()
-const s3BucketName = process.env.S3BUCKETNAME ?? "" //  Update this if you deploy this again in another environment!
-// We also will need to copy this value to user-data.sh for now to target what s3 bucket we are using in the instance
+const worldName = 'world.wld' // Update this if your world file in s3-files has a different filename.
+                              // Otherwise, leave it alone since it is the name of the world filename
+                              // that it will generate.
 
-if (!email || !s3BucketName) {
-  throw "Should have an email and s3 bucket name created in a .env file, see Readme"
+if (!email) {
+  throw 'Should have an email created in a .env file, see Readme'
 }
 
 // We create this under a class just to link together resources with 'this'
@@ -32,17 +33,18 @@ export class TerrariaServerStack extends cdk.Stack {
     super(scope, id, props)
 
     // S3
-    const bucket = new s3.Bucket(this, s3BucketName, {versioned: true});
+    const bucket = new s3.Bucket(this, 'ServerFiles', {versioned: true});
 
     new s3deploy.BucketDeployment(this, `${App}${id}DeployFiles`, {
       sources: [s3deploy.Source.asset('./s3-files')],
       destinationBucket: bucket,
-      prune: false, // Don't delete the files if they already exist in s3
+      prune: false, // This makes it not delete the files if they already exist in s3
     });
 
     // UserData start-up commands for EC2 Instance
     const commands = readFileSync(path.join(__dirname, 'user-data.sh'), 'utf8')
     const commandsReplaced = commands.replace(new RegExp('s3BucketName', 'g'), bucket.bucketName)
+            .replace(new RegExp('worldName', 'g'), worldName)
 
     const userData = ec2.UserData.forLinux()
     userData.addCommands(commandsReplaced)
@@ -79,7 +81,7 @@ export class TerrariaServerStack extends cdk.Stack {
       document: new iam.PolicyDocument({
         statements: [new iam.PolicyStatement({
           actions: ['s3:*'],
-          resources: [bucket.bucketArn],
+          resources: [bucket.bucketArn, `${bucket.bucketArn}/*`],
         })],
       }),
     }))

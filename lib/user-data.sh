@@ -21,9 +21,9 @@ ExecStart=/home/ec2-user/start-terraria.sh
 WantedBy=multi-user.target
 EOT
 
-cat <<EOT >> /home/ec2-user/start-terraria.sh
+cat << "EOT" >> /home/ec2-user/start-terraria.sh
 #!/bin/bash
-docker run --rm --name="terraria" -p 7777:7777 -v $HOME/terraria/world:/root/.local/share/Terraria/Worlds ryshe/terraria:latest -world /root/.local/share/Terraria/Worlds/world.wld --log-opt max-size=200m -disable-commands
+docker run --rm --name="terraria" -p 7777:7777 -v $HOME/terraria/world:/root/.local/share/Terraria/Worlds ryshe/terraria:latest -world /root/.local/share/Terraria/Worlds/worldName --log-opt max-size=200m -disable-commands
 EOT
 
 cat << "EOT" >> /home/ec2-user/backup-terraria.sh
@@ -55,14 +55,14 @@ echo "Trying to copy down world files, if they exist"
 
 sudo -u ec2-user aws s3 cp "s3://s3BucketName" $HOME/terraria/world --recursive
 
-FILE=$HOME/terraria/world/world.wld
+FILE=$HOME/terraria/world/worldName
 if [[ -f "$FILE" ]]; then
   echo "World file exists. Will use it."
-  sudo -u ec2-user docker run --rm --name="terraria" -p 7777:7777 -v $HOME/terraria/world:/root/.local/share/Terraria/Worlds ryshe/terraria:latest -world /root/.local/share/Terraria/Worlds/world.wld --log-opt max-size=200m -disable-commands
+  sudo -u ec2-user docker run --rm --name="terraria" -p 7777:7777 -v $HOME/terraria/world:/root/.local/share/Terraria/Worlds ryshe/terraria:latest -world /root/.local/share/Terraria/Worlds/worldName --log-opt max-size=200m -disable-commands
 else
   echo "World file does not exist. Creating new world"
   echo "Note: autocreate number is size of world, 1=small, 2=med, 3=large. Using 3 by default"
   size=3
-  sudo -u ec2-user docker run --rm --name="terraria" -p 7777:7777 -v $HOME/terraria/world:/root/.local/share/Terraria/Worlds ryshe/terraria:latest -world /root/.local/share/Terraria/Worlds/world.wld --log-opt max-size=200m -disable-commands -autocreate "$size"
+  sudo -u ec2-user docker run --rm --name="terraria" -p 7777:7777 -v $HOME/terraria/world:/root/.local/share/Terraria/Worlds ryshe/terraria:latest -world /root/.local/share/Terraria/Worlds/worldName --log-opt max-size=200m -disable-commands -autocreate "$size"
 fi
 
