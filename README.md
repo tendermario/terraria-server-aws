@@ -48,9 +48,10 @@ Example working server can be found here: https://tendermario.github.io/terraria
 
 ### Setup backend and CDK infrastructure
 
-- Copy `.env.example` to a new file in the same location named `.env` - edit the contents to your own details
 - Run `npm i` to install all the magic
-- Optional: Add your world file as `world.wld` in s3-files, and update the `config.json` to have a server name and password if you want
+- Copy `.env.example` to a new file in the same location named `.env` - edit the contents to your own details
+- Optional: Update `bin/terraria-server-aws-stack.ts` with the names of the servers you want
+- Optional: Add your world file as `world.wld` in s3-files, and update the `config.json` to have a server name and password if you want.
   - You can find your world file at: `%UserProfile%\Documents\My Games\Terraria\Worlds` on Windows
   - If you want it to have a custom world.wld name, you can update the variable in `terraria-server-aws-stack.ts`
   - All files in s3-files will be uploaded to S3, so if you want to put multiple worlds in there to be accessible from the server, feel free.
@@ -87,6 +88,13 @@ Commands I never used, but will share anyway:
  * `npm run build`   compile typescript to js
  * `npm run watch`   watch for changes and compile
  * `npm run test`    perform the jest unit tests
+
+## Setting up multiple servers
+
+- Add another new TerrariaServerStack(app, '<Name>', {}) to bin/terraria-server-aws-stack.ts.
+- Create a folder with index.js and index.html named server-<something>
+- Use the different API gateway endpoint in the js file
+- Create another folder in s3-files to reference if you want to load a specific world
 
 ## Todo
 
