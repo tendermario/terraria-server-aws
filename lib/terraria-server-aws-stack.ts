@@ -27,32 +27,35 @@ interface TerrariaServerStackProps extends cdk.StackProps {
   UIpassword: string;
   // (Optional) The location of the world data, if you want to move a world onto the server 
   s3Files?: string;
-}
+  // (Optional) Whether to create an Elastic IP or not. Look below to see the guessed costs associated with it
+  useEIP?: boolean;
+ }
 
 // We create this under a class just to link together resources with 'this'
 export class TerrariaServerStack extends cdk.Stack {
   constructor(scope: any, id: string, props: TerrariaServerStackProps) {
     super(scope, id, props)
     const {
-      worldFileName,
       email,
       UIpassword,
       s3Files,
     } = props
+    const {region} = this
+
+    const worldFileName = props.worldFileName || 'world.wld'
+    const useEIP = props.useEIP || false
     
     // S3
     const bucket = new s3.Bucket(this, 'ServerFiles', {versioned: true})
     const assetFiles = s3Files || ""
 
-    if (assetFiles && !existsSync(assetFiles)) {
-      throw "Cannot locate the files to upload to s3"
+    if (assetFiles && existsSync(assetFiles)) {
+      new s3deploy.BucketDeployment(this, `${App}DeployFiles-${id}`, {
+        sources: [s3deploy.Source.asset(assetFiles)],
+        destinationBucket: bucket,
+        prune: false, // This makes it not delete the files if they already exist in s3
+      });
     }
-
-    new s3deploy.BucketDeployment(this, `${App}DeployFiles-${id}`, {
-      sources: [s3deploy.Source.asset(assetFiles)],
-      destinationBucket: bucket,
-      prune: false, // This makes it not delete the files if they already exist in s3
-    });
 
     // UserData start-up commands for EC2 Instance
     const commands = readFileSync(path.join(__dirname, 'user-data.sh'), 'utf8')
@@ -79,10 +82,11 @@ export class TerrariaServerStack extends cdk.Stack {
     const ec2Instance = new ec2.Instance(this, `${id}Server`, {
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
-      instanceType: ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.SMALL),
+      instanceType: ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE4_GRAVITON, ec2.InstanceSize.SMALL),
       keyName: 'ec2-key-pair',
       machineImage: new ec2.AmazonLinuxImage({
         generation: ec2.AmazonLinuxGeneration.AMAZON_LINUX_2,
+        cpuType: ec2.AmazonLinuxCpuType.ARM_64,
       }),
       securityGroup,
       userData,
@@ -100,10 +104,21 @@ export class TerrariaServerStack extends cdk.Stack {
     }))
 
     const {instanceId} = ec2Instance
-    // EC2 Instance has Elastic IP
-    const eip = new ec2.CfnEIP(this, `${App}Ip-${id}`, {instanceId: instanceId})
-    // List the IP in the output
-    new cdk.CfnOutput(this, `${App}IpAddress-${id}`, { value: eip.ref });
+
+    // I think I'll just not do an EIP unless I can get only one EIP provisioned
+    if (useEIP) {
+      // EC2 Instance has Elastic IP
+      // Note: It costs 0.5 cents per hour to have an elastic IP address beyond your first one.
+      // For some reason, it's creating 3 elastic IP addresses - one for this, and two for the
+      // public subnets. At ~730 hrs/month, this makes it:
+      // First server is $3.65/mo * 2 EIPs = $7.30/mo
+      // each additional server is $3.65 * 3 = $10.95/mo
+      const eip = new ec2.CfnEIP(this, `${App}Ip-${id}`, {instanceId})
+      // List the IP in the output
+      new cdk.CfnOutput(this, `${App}IpAddress-${id}`, { value: eip.ref });
+    } else {
+      // TODO: Output ec2 IP
+    }
 
     // Lambdas
     const lambdaDir = path.join(__dirname, 'lambdas')
@@ -111,9 +126,10 @@ export class TerrariaServerStack extends cdk.Stack {
     const startLambda = new lambda.NodejsFunction(this, `${App}StartServerLambda-${id}`, {
       entry: path.join(lambdaDir, 'start-lambda.ts'),
       handler: 'handler',
-      functionName: `Start${App}ServerLambda`,
+      functionName: `${App}StartServerLambda-${id}`,
       environment: {
         'INSTANCE_ID': instanceId,
+        'REGION': region,
       },
     })
     startLambda.role?.attachInlinePolicy(new iam.Policy(this, `${App}StartEc2Policy-${id}`, {
@@ -128,9 +144,10 @@ export class TerrariaServerStack extends cdk.Stack {
     const stopLambda = new lambda.NodejsFunction(this, `${App}StopServerLambda-${id}`, {
       entry: path.join(lambdaDir, 'stop-lambda.ts'),
       handler: 'handler',
-      functionName: `Stop${App}ServerLambda`,
+      functionName: `${App}StopServerLambda-${id}`,
       environment: {
         'INSTANCE_ID': instanceId,
+        'REGION': region,
       },
     })
     stopLambda.role?.attachInlinePolicy(new iam.Policy(this, `${App}StopEc2Policy-${id}`, {
@@ -145,9 +162,10 @@ export class TerrariaServerStack extends cdk.Stack {
     const statusLambda = new lambda.NodejsFunction(this, `${App}ServerStatusLambda-${id}`, {
       entry: path.join(lambdaDir, 'status-lambda.ts'),
       handler: 'handler',
-      functionName: `${App}ServerStatusLambda`,
+      functionName: `${App}ServerStatusLambda-${id}`,
       environment: {
         'INSTANCE_ID': instanceId,
+        'REGION': region,
       },
     })
     statusLambda.role?.attachInlinePolicy(new iam.Policy(this, `${App}Ec2StatusPolicy-${id}`, {
@@ -162,7 +180,7 @@ export class TerrariaServerStack extends cdk.Stack {
     const authLambda = new lambda.NodejsFunction(this, `${App}ServerAuthLambda-${id}`, {
       entry: path.join(lambdaDir, 'auth-lambda.ts'),
       handler: 'handler',
-      functionName: `${App}ServerAuthLambda`,
+      functionName: `${App}ServerAuthLambda-${id}`,
       environment: {
         'PASSWORD': UIpassword
       },
@@ -197,11 +215,11 @@ export class TerrariaServerStack extends cdk.Stack {
     // Alarms
 
     // This topic is how emails get sent on alarm, just .addAlarmAction(emailAlarmAction) to attach it to an alarm
-    const emailAlarm = new Topic(this, 'EmailAlarms')
+    const emailAlarm = new Topic(this, `${App}EmailAlarms-${id}`)
     emailAlarm.addSubscription(new EmailSubscription(email))
     const emailAlarmAction = new SnsAction(emailAlarm)
 
-    new cloudwatch.Alarm(this, `${App} ec2 instance high CPU usage`, {
+    new cloudwatch.Alarm(this, `${App}-${id} ec2 instance high CPU usage`, {
       metric: new cloudwatch.Metric({
         namespace: `${App}ServerStack/Server-${id}`,
         metricName: 'CPUUtilization',
@@ -210,28 +228,28 @@ export class TerrariaServerStack extends cdk.Stack {
       }),
       evaluationPeriods: 2,
       datapointsToAlarm: 2,
-      threshold: 98,
+      threshold: 90,
       treatMissingData: cloudwatch.TreatMissingData.IGNORE,
-      alarmName: `${App} ec2 instance high CPU usage`,
+      alarmName: `${App}-${id} ec2 instance high CPU usage`,
     }).addAlarmAction(emailAlarmAction)
 
     // TODO: Create a memory usage check - might be a bit more complicated with MemoryUtilized and MemoryReserved metrics
     // Or use `sudo yum install amazon-cloudwatch-agent` and add an IAM policy to let the instance report CloudWatch Agent metrics
 
     // Create alarms on instance being on for 8 hours, 24 hours
-    const alarmOnUptime = (hour: number) => new cloudwatch.Alarm(this, `${App} ec2 instance on for ${hour} hours`, {
+    const alarmOnUptime = (hour: number) => new cloudwatch.Alarm(this, `${App}-${id} ec2 instance on for ${hour} hours`, {
       metric: new cloudwatch.Metric({
-        namespace: `${App}TerrariaServerStack-${id}`,
+        namespace: `${App}ServerStack-${id}`,
         metricName: 'CPUUtilization',
         statistic: 'avg',
         label: 'Average CPU usage %',
-        period: Duration.hours(1),
+        period: Duration.hours(hour),
       }),
-      evaluationPeriods: hour,
-      datapointsToAlarm: hour,
+      evaluationPeriods: 1,
+      datapointsToAlarm: 1,
       threshold: 0,
       treatMissingData: cloudwatch.TreatMissingData.IGNORE,
-      alarmName: `${App} ec2 instance on for ${hour} hours`,
+      alarmName: `${App}-${id} ec2 instance on for ${hour} hours`,
     }).addAlarmAction(emailAlarmAction)
     
     ;[8,16,24].forEach(alarmOnUptime)
