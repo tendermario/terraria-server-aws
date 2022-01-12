@@ -48,7 +48,7 @@ systemctl enable docker_terraria.service
 
 # Load docker files for ec2-user
 sudo -u ec2-user mkdir -p $HOME/terraria/world
-chmod +rw /terraria
+chmod +rw $HOME/terraria
 chmod +rw $HOME/terraria/world
 
 echo "Trying to copy down world files, if they exist"
