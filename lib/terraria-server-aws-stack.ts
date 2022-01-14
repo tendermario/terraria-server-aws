@@ -47,7 +47,7 @@ interface TerrariaServerStackProps extends cdk.StackProps {
 export class TerrariaServerStack extends cdk.Stack {
   constructor(scope: any, id: string, props: TerrariaServerStackProps) {
     const app = 'Terraria'
-    const service = `${app}/${id}`
+    const service = `${app}-${id}` // Lambdas cant seem to handle `/` in their names.
     super(scope, service, props)
     const {
       email,
@@ -84,15 +84,15 @@ export class TerrariaServerStack extends cdk.Stack {
     // EC2 Instance
     const vpc = ec2.Vpc.fromLookup(this, "VPC", {isDefault: true})
 
-    const securityGroup = new ec2.SecurityGroup(this, `${service}/SecurityGroup`, {
+    const securityGroup = new ec2.SecurityGroup(this, `${service} SecurityGroup`, {
       vpc,
       description: `Access to server ports for ec2 instance`
     })
-    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(7777), `${service}/Allow server connections`)
-    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.udp(7777), `${service}/Allow server connections`)
-    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22), `${service}/Allow ssh access from the world`)
+    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(7777), `${service} Allow server connections`)
+    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.udp(7777), `${service} Allow server connections`)
+    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22), `${service} Allow ssh access from the world`)
 
-    const ec2Instance = new ec2.Instance(this, `${service}/Server`, {
+    const ec2Instance = new ec2.Instance(this, `${service} Server`, {
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
       instanceType: ec2.InstanceType.of(instanceClass, instanceSize),
@@ -107,7 +107,7 @@ export class TerrariaServerStack extends cdk.Stack {
     })
 
     // ec2 access S3
-    ec2Instance.role?.attachInlinePolicy(new iam.Policy(this, `${service}/AccessS3`, {
+    ec2Instance.role?.attachInlinePolicy(new iam.Policy(this, `${service} AccessS3`, {
       document: new iam.PolicyDocument({
         statements: [new iam.PolicyStatement({
           actions: ['s3:*'],
@@ -126,9 +126,9 @@ export class TerrariaServerStack extends cdk.Stack {
       // public subnets. At ~730 hrs/month, this makes it:
       // First server is $3.65/mo * 2 EIPs = $7.30/mo
       // each additional server is $3.65 * 3 = $10.95/mo
-      const eip = new ec2.CfnEIP(this, `${service}/Ip`, {instanceId})
+      const eip = new ec2.CfnEIP(this, `${service} Ip`, {instanceId})
       // List the IP in the output
-      new cdk.CfnOutput(this, `${service}/IpAddress`, { value: eip.ref });
+      new cdk.CfnOutput(this, `${service} IpAddress`, { value: eip.ref });
     } else {
       // TODO: Output ec2 IP
     }
@@ -136,16 +136,16 @@ export class TerrariaServerStack extends cdk.Stack {
     // Lambdas
     const lambdaDir = path.join(__dirname, 'lambdas')
 
-    const startLambda = new lambda.NodejsFunction(this, `${service}/StartServerLambda`, {
+    const startLambda = new lambda.NodejsFunction(this, `${service} StartServerLambda`, {
       entry: path.join(lambdaDir, 'start-lambda.ts'),
       handler: 'handler',
-      functionName: `${service}/StartServerLambda`,
+      functionName: `${service} StartServerLambda`,
       environment: {
         'INSTANCE_ID': instanceId,
         'REGION': region,
       },
     })
-    startLambda.role?.attachInlinePolicy(new iam.Policy(this, `${service}/StartEc2Policy`, {
+    startLambda.role?.attachInlinePolicy(new iam.Policy(this, `${service} StartEc2Policy`, {
       document: new iam.PolicyDocument({
         statements: [new iam.PolicyStatement({
           actions: ['ec2:StartInstances'],
@@ -154,16 +154,16 @@ export class TerrariaServerStack extends cdk.Stack {
       }),
     }))
 
-    const stopLambda = new lambda.NodejsFunction(this, `${service}/StopServerLambda`, {
+    const stopLambda = new lambda.NodejsFunction(this, `${service} StopServerLambda`, {
       entry: path.join(lambdaDir, 'stop-lambda.ts'),
       handler: 'handler',
-      functionName: `${service}/StopServerLambda`,
+      functionName: `${service} StopServerLambda`,
       environment: {
         'INSTANCE_ID': instanceId,
         'REGION': region,
       },
     })
-    stopLambda.role?.attachInlinePolicy(new iam.Policy(this, `${service}/StopEc2Policy`, {
+    stopLambda.role?.attachInlinePolicy(new iam.Policy(this, `${service} StopEc2Policy`, {
       document: new iam.PolicyDocument({
         statements: [new iam.PolicyStatement({
           actions: ['ec2:StopInstances'],
@@ -172,16 +172,16 @@ export class TerrariaServerStack extends cdk.Stack {
       }),
     }))
 
-    const statusLambda = new lambda.NodejsFunction(this, `${service}/ServerStatusLambda`, {
+    const statusLambda = new lambda.NodejsFunction(this, `${service} ServerStatusLambda`, {
       entry: path.join(lambdaDir, 'status-lambda.ts'),
       handler: 'handler',
-      functionName: `${service}/ServerStatusLambda`,
+      functionName: `${service} ServerStatusLambda`,
       environment: {
         'INSTANCE_ID': instanceId,
         'REGION': region,
       },
     })
-    statusLambda.role?.attachInlinePolicy(new iam.Policy(this, `${service}/Ec2StatusPolicy`, {
+    statusLambda.role?.attachInlinePolicy(new iam.Policy(this, `${service} Ec2StatusPolicy`, {
       document: new iam.PolicyDocument({
         statements: [new iam.PolicyStatement({
           actions: ['ec2:DescribeInstanceStatus'],
@@ -190,24 +190,24 @@ export class TerrariaServerStack extends cdk.Stack {
       }),
     }))
 
-    const authLambda = new lambda.NodejsFunction(this, `${service}/ServerAuthLambda`, {
+    const authLambda = new lambda.NodejsFunction(this, `${service} ServerAuthLambda`, {
       entry: path.join(lambdaDir, 'auth-lambda.ts'),
       handler: 'handler',
-      functionName: `${service}/ServerAuthLambda`,
+      functionName: `${service} ServerAuthLambda`,
       environment: {
         'PASSWORD': UIpassword
       },
     })
 
     // API Gateway
-    const api = new apigateway.RestApi(this, `${service}/ServerApi`, {
+    const api = new apigateway.RestApi(this, `${service} ServerApi`, {
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
         allowHeaders: ['Authorization'],
       }
     })
-    const authorizer = new apigateway.RequestAuthorizer(this, `${service}/ServerAuthorizer`, {
+    const authorizer = new apigateway.RequestAuthorizer(this, `${service} ServerAuthorizer`, {
       handler: authLambda,
       identitySources: [apigateway.IdentitySource.header('Authorization')],
       resultsCacheTtl: Duration.seconds(0),
@@ -228,13 +228,13 @@ export class TerrariaServerStack extends cdk.Stack {
     // Alarms
 
     // This topic is how emails get sent on alarm, just .addAlarmAction(emailAlarmAction) to attach it to an alarm
-    const emailAlarm = new Topic(this, `${service}/EmailAlarms`)
+    const emailAlarm = new Topic(this, `${service} EmailAlarms`)
     emailAlarm.addSubscription(new EmailSubscription(email))
     const emailAlarmAction = new SnsAction(emailAlarm)
 
-    new cloudwatch.Alarm(this, `${service}/ ec2 instance high CPU usage`, {
+    new cloudwatch.Alarm(this, `${service}  ec2 instance high CPU usage`, {
       metric: new cloudwatch.Metric({
-        namespace: `${service}/ServerStack/Server`,
+        namespace: `${service} ServerStack/Server`,
         metricName: 'CPUUtilization',
         statistic: 'avg',
         label: 'Average CPU usage %'
@@ -243,16 +243,16 @@ export class TerrariaServerStack extends cdk.Stack {
       datapointsToAlarm: 2,
       threshold: 90,
       treatMissingData: cloudwatch.TreatMissingData.IGNORE,
-      alarmName: `${service}/ ec2 instance high CPU usage`,
+      alarmName: `${service}  ec2 instance high CPU usage`,
     }).addAlarmAction(emailAlarmAction)
 
     // TODO: Create a memory usage check - might be a bit more complicated with MemoryUtilized and MemoryReserved metrics
     // Or use `sudo yum install amazon-cloudwatch-agent` and add an IAM policy to let the instance report CloudWatch Agent metrics
 
     // Create alarms on instance being on for 8 hours, 24 hours
-    const alarmOnUptime = (hour: number) => new cloudwatch.Alarm(this, `${service}/ec2 instance on for ${hour} hours`, {
+    const alarmOnUptime = (hour: number) => new cloudwatch.Alarm(this, `${service} ec2 instance on for ${hour} hours`, {
       metric: new cloudwatch.Metric({
-        namespace: `${service}/ServerStack`,
+        namespace: `${service} ServerStack`,
         metricName: 'CPUUtilization',
         statistic: 'avg',
         label: 'Average CPU usage %',
@@ -262,7 +262,7 @@ export class TerrariaServerStack extends cdk.Stack {
       datapointsToAlarm: 1,
       threshold: 0,
       treatMissingData: cloudwatch.TreatMissingData.IGNORE,
-      alarmName: `${service}/ec2 instance on for ${hour} hours`,
+      alarmName: `${service} ec2 instance on for ${hour} hours`,
     }).addAlarmAction(emailAlarmAction)
     
     ;[8,16,24].forEach(alarmOnUptime)
