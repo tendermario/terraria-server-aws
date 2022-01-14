@@ -35,7 +35,7 @@ aws s3 cp $HOME/terraria/world "s3://s3BucketName" --recursive
 EOT
 
 # Adds a server backup every 10 min
-echo "*/10 * * * * ec2-user /home/ec2-user/backup-terraria.sh" >> /var/spool/cron/ec2-user
+echo "*/10 * * * * /home/ec2-user/backup-terraria.sh > /home/ec2-user/cron.log" >> /var/spool/cron/ec2-user
 
 HOME=/home/ec2-user
 
