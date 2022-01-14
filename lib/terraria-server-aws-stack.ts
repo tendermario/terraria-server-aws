@@ -15,35 +15,50 @@ import { SnsAction } from 'aws-cdk-lib/aws-cloudwatch-actions'
 import * as s3 from 'aws-cdk-lib/aws-s3'
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment'
 
-const App = 'Terraria'
+const instanceType = 't4g'
+const instanceSize = ec2.InstanceSize.SMALL
+const generation = ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
 
+// Add to this list if you want more options.
+const instanceTypes = {
+  t4g: {
+    instanceClass: ec2.InstanceClass.BURSTABLE4_GRAVITON,
+    cpuType: ec2.AmazonLinuxCpuType.ARM_64
+  },
+}
 
 interface TerrariaServerStackProps extends cdk.StackProps {
-  // The name of the world file
-  worldFileName?: string;
   // The email for alarms to go to
-  email: string;
+  email: string
   // The password set to turn on/off the server in the frontend UI
-  UIpassword: string;
+  UIpassword: string
+  // (Optional) The name of the world file
+  worldFileName?: string // Default: 'world.wld'
   // (Optional) The location of the world data, if you want to move a world onto the server 
-  s3Files?: string;
+  s3Files?: string // Default: none
   // (Optional) Whether to create an Elastic IP or not. Look below to see the guessed costs associated with it
-  useEIP?: boolean;
- }
+  useElasticIP?: boolean // Default: false
+  // (Optional) This allows deployment to OVERWRITE the files in S3 of an existing server
+  // Luckily if an accidental overwrite happens, you should be able to go into S3 and roll back the file version.
+  overwriteServerFiles?: boolean // Default: false
+}
 
 // We create this under a class just to link together resources with 'this'
 export class TerrariaServerStack extends cdk.Stack {
   constructor(scope: any, id: string, props: TerrariaServerStackProps) {
+    const App = 'Terraria'
     super(scope, id, props)
     const {
       email,
       UIpassword,
       s3Files,
+      overwriteServerFiles,
     } = props
     const {region} = this
 
     const worldFileName = props.worldFileName || 'world.wld'
-    const useEIP = props.useEIP || false
+    const useElasticIP = props.useElasticIP || false
+    const {instanceClass, cpuType} = instanceTypes[instanceType]
     
     // S3
     const bucket = new s3.Bucket(this, 'ServerFiles', {versioned: true})
@@ -53,7 +68,7 @@ export class TerrariaServerStack extends cdk.Stack {
       new s3deploy.BucketDeployment(this, `${App}DeployFiles-${id}`, {
         sources: [s3deploy.Source.asset(assetFiles)],
         destinationBucket: bucket,
-        prune: false, // This makes it not delete the files if they already exist in s3
+        prune: Boolean(overwriteServerFiles),
       });
     }
 
@@ -66,10 +81,7 @@ export class TerrariaServerStack extends cdk.Stack {
     userData.addCommands(commandsReplaced)
 
     // EC2 Instance
-    const vpc = new ec2.Vpc(this, `${App}VPC`, {
-      enableDnsHostnames: true,
-      enableDnsSupport: true,
-    })
+    const vpc = ec2.Vpc.fromLookup(this, "VPC", {isDefault: true})
 
     const securityGroup = new ec2.SecurityGroup(this, `${App}SecurityGroup-${id}`, {
       vpc,
@@ -82,11 +94,12 @@ export class TerrariaServerStack extends cdk.Stack {
     const ec2Instance = new ec2.Instance(this, `${id}Server`, {
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
-      instanceType: ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE4_GRAVITON, ec2.InstanceSize.SMALL),
+
+      instanceType: ec2.InstanceType.of(instanceClass, instanceSize),
       keyName: 'ec2-key-pair',
       machineImage: new ec2.AmazonLinuxImage({
-        generation: ec2.AmazonLinuxGeneration.AMAZON_LINUX_2,
-        cpuType: ec2.AmazonLinuxCpuType.ARM_64,
+        generation,
+        cpuType,
       }),
       securityGroup,
       userData,
@@ -106,7 +119,7 @@ export class TerrariaServerStack extends cdk.Stack {
     const {instanceId} = ec2Instance
 
     // I think I'll just not do an EIP unless I can get only one EIP provisioned
-    if (useEIP) {
+    if (useElasticIP) {
       // EC2 Instance has Elastic IP
       // Note: It costs 0.5 cents per hour to have an elastic IP address beyond your first one.
       // For some reason, it's creating 3 elastic IP addresses - one for this, and two for the
