@@ -88,11 +88,11 @@ export class TerrariaServerStack extends cdk.Stack {
       vpc,
       description: `Access to server ports for ec2 instance`
     })
-    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(7777), `${service}-Allow server connections`)
-    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.udp(7777), `${service}-Allow server connections`)
-    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22), `${service}-Allow ssh access from the world`)
+    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(7777), `Allow ${app} server connections`)
+    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.udp(7777), `Allow server connections`)
+    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22), `Allow ssh access from the world`)
 
-    const ec2Instance = new ec2.Instance(this, `${service}-Server`, {
+    const ec2Instance = new ec2.Instance(this, `Server`, {
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
       instanceType: ec2.InstanceType.of(instanceClass, instanceSize),
