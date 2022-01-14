@@ -81,10 +81,7 @@ export class TerrariaServerStack extends cdk.Stack {
     userData.addCommands(commandsReplaced)
 
     // EC2 Instance
-    const vpc = new ec2.Vpc(this, `${App}VPC`, {
-      enableDnsHostnames: false, // Disabled... trying to remove nats
-      enableDnsSupport: true,
-    })
+    const vpc = ec2.Vpc.fromLookup(this, "VPC", {isDefault: true})
 
     const securityGroup = new ec2.SecurityGroup(this, `${App}SecurityGroup-${id}`, {
       vpc,
