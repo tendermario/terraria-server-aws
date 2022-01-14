@@ -9,7 +9,6 @@ import { TerrariaServerStack } from '../lib/terraria-server-aws-stack'
 
 const email = process.env.EMAIL ?? ""
 const UIpassword = process.env.UIPASSWORD ?? crypto.randomUUID()
-const worldFileName = 'world.wld'
 
 if (!email) {
   throw 'Should have an email created in a .env file, see Readme'
@@ -19,11 +18,10 @@ const app = new cdk.App()
 new TerrariaServerStack(app, 'Default', {
   UIpassword,
   email,
-  // Update this if your world file in s3-files has a different filename.
-  // Otherwise, leave it alone since it is the name of the world filename
-  // that it will generate.
-  worldFileName,
-  s3Files: './s3-files/default',
+  // Optional additional args:
+  // s3Files: './s3-files/default',
+  // worldName: 'world.wld',
+  // useElasticIP: true,
 
   /* If you don't specify 'env', this stack will be environment-agnostic.
    * Account/Region-dependent features and context lookups will not work,
