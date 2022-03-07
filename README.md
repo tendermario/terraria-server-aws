@@ -100,6 +100,8 @@ Commands I never used, but will share anyway:
 
 - Make the hard-coded endpoint in the JS file be added programatically when building out the cdk and setting up the API Gateway endpoint
 - Maybe make a healthcheck
+- Add a hook to update the docker version when a new TShock/terraria version comes out, since we can't downgrade Terraria easily
+- Add a way to find the IP address when the server is running
 
 ## Manual setup tips
 
