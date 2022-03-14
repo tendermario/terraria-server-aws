@@ -102,6 +102,8 @@ Commands I never used, but will share anyway:
 - Maybe make a healthcheck
 - Add a hook to update the docker version when a new TShock/terraria version comes out, since we can't downgrade Terraria easily
 - Add a way to find the IP address when the server is running
+- Figure out how to determine if the latest Terraria version doesn't match the latest Terraria server version
+- Update server version button (maybe another lambda?)
 
 ## Manual setup tips
 
