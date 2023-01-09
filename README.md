@@ -40,7 +40,9 @@ Example working server can be found here: https://tendermario.github.io/terraria
 - with your aws credentials set up with `aws configure` (ref: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html)
   - This sets up the files located in ~/.aws/config / credentials. If you get any of it wrong, you can change it there
   - Usually you should use the region closest to you
-  - You should probably create a user in AWS IAM with enough privileges to create many resources... if you're lazy, you can set Admin privileges to a user and create the key pair under it.
+  - You should probably create a user in AWS IAM with enough privileges to create many resources, and create a key pair. If you're lazy, you can set Admin privileges to a user and create the key pair under it.
+    - This is under: Users > select your user > Security credentials > Access keys > Create access key.
+    - Note: Save the name of this keypair, it will be used later in the `.env` file.
 
 ## Setup
 

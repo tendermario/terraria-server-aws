@@ -44,6 +44,8 @@ const instanceTypes = {
 }
 
 interface TerrariaServerStackProps extends cdk.StackProps {
+  // The IAM keypair associated with your root account or ideally your IAM user you use the CLI with.
+  keyName: string
   // The email for alarms to go to
   email: string
   // The password set to turn on/off the server in the frontend UI
@@ -118,7 +120,7 @@ export class TerrariaServerStack extends cdk.Stack {
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
       instanceType: ec2.InstanceType.of(instanceClass, instanceSize),
-      keyName: 'ec2-key-pair',
+      keyName,
       machineImage: new ec2.AmazonLinuxImage({
         generation,
         cpuType,
