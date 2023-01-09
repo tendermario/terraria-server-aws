@@ -15,12 +15,28 @@ import { SnsAction } from 'aws-cdk-lib/aws-cloudwatch-actions'
 import * as s3 from 'aws-cdk-lib/aws-s3'
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment'
 
-const instanceType = 't4g'
-const instanceSize = ec2.InstanceSize.SMALL
 const generation = ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
+
+// The type you want will be based mostly on:
+// - The arch built for the docker image. Can reference https://hub.docker.com/r/ryshe/terraria/tags to see which
+//   architecture you want.
+// - The performance that architecture is best suited for.
+
+interface InstanceTypes {
+  [index: string]: {
+    instanceClass: ec2.InstanceClass
+    cpuType: ec2.AmazonLinuxCpuType
+  }
+}
 
 // Add to this list if you want more options.
 const instanceTypes = {
+  // AMD64
+  t3: {
+    instanceClass: ec2.InstanceClass.BURSTABLE3_AMD,
+    cpuType: ec2.AmazonLinuxCpuType.X86_64
+  },
+  // ARM64
   t4g: {
     instanceClass: ec2.InstanceClass.BURSTABLE4_GRAVITON,
     cpuType: ec2.AmazonLinuxCpuType.ARM_64
@@ -28,6 +44,8 @@ const instanceTypes = {
 }
 
 interface TerrariaServerStackProps extends cdk.StackProps {
+  // The IAM keypair associated with your root account or ideally your IAM user you use the CLI with.
+  keyName: string
   // The email for alarms to go to
   email: string
   // The password set to turn on/off the server in the frontend UI
@@ -41,6 +59,10 @@ interface TerrariaServerStackProps extends cdk.StackProps {
   // (Optional) This allows deployment to OVERWRITE the files in S3 of an existing server
   // Luckily if an accidental overwrite happens, you should be able to go into S3 and roll back the file version.
   overwriteServerFiles?: boolean // Default: false
+
+  // (Optional) Container type/size
+  instanceType?: string
+  instanceSize?: ec2.InstanceSize
  }
 
 // We create this under a class just to link together resources with 'this'
@@ -57,6 +79,8 @@ export class TerrariaServerStack extends cdk.Stack {
     } = props
     const {region} = this
 
+    const instanceType = props.instanceType || 't3'
+    const instanceSize = props.instanceSize || ec2.InstanceSize.SMALL
     const worldFileName = props.worldFileName || 'world.wld'
     const useElasticIP = props.useElasticIP || false
     const {instanceClass, cpuType} = instanceTypes[instanceType]
@@ -96,7 +120,7 @@ export class TerrariaServerStack extends cdk.Stack {
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
       instanceType: ec2.InstanceType.of(instanceClass, instanceSize),
-      keyName: 'ec2-key-pair',
+      keyName,
       machineImage: new ec2.AmazonLinuxImage({
         generation,
         cpuType,
