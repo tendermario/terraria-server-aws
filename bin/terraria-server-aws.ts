@@ -20,18 +20,19 @@ if (!keyName) {
 }
 
 const app = new cdk.App()
-new TerrariaServerStack(app, 'Default', {
-  UIpassword,
-  email,
+new TerrariaServerStack(app, 'FlatEarth', {
   keyName,
-  // Optional additional args:
-  // s3Files: './s3-files/default',
-  // worldName: 'world.wld',
-  // useElasticIP: true,
+  email,
+  UIpassword,
+  s3Files: './s3-files/flatearth',
+  useElasticIP: false,
+  env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
+})
 
-  /* If you don't specify 'env', this stack will be environment-agnostic.
-   * Account/Region-dependent features and context lookups will not work,
-   * but a single synthesized template can be deployed anywhere. */
-  /* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */
+new TerrariaServerStack(app, 'InnMates', {
+  keyName,
+  email,
+  UIpassword: process.env.INNMATES || "",
+  useElasticIP: false,
   env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
 })
