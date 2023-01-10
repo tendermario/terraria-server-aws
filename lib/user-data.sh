@@ -23,6 +23,7 @@ EOT
 
 cat << "EOT" >> /home/ec2-user/start-terraria.sh
 #!/bin/bash
+docker pull ryshe/terraria:latest  # Every time we start the server, auto-get the latest terraria image.
 docker run --rm --name="terraria" -p 7777:7777 -v $HOME/terraria/world:/root/.local/share/Terraria/Worlds ryshe/terraria:latest -world /root/.local/share/Terraria/Worlds/worldFileName --log-opt max-size=200m -disable-commands
 EOT
 
