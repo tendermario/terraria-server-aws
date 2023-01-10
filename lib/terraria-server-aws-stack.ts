@@ -30,7 +30,7 @@ interface InstanceTypes {
 }
 
 // Add to this list if you want more options.
-const instanceTypes = {
+const instanceTypes: InstanceTypes = {
   // AMD64
   t3: {
     instanceClass: ec2.InstanceClass.BURSTABLE3_AMD,
@@ -59,11 +59,10 @@ interface TerrariaServerStackProps extends cdk.StackProps {
   // (Optional) This allows deployment to OVERWRITE the files in S3 of an existing server
   // Luckily if an accidental overwrite happens, you should be able to go into S3 and roll back the file version.
   overwriteServerFiles?: boolean // Default: false
-
   // (Optional) Container type/size
   instanceType?: string
   instanceSize?: ec2.InstanceSize
- }
+}
 
 // We create this under a class just to link together resources with 'this'
 export class TerrariaServerStack extends cdk.Stack {
@@ -76,6 +75,7 @@ export class TerrariaServerStack extends cdk.Stack {
       UIpassword,
       s3Files,
       overwriteServerFiles,
+      keyName,
     } = props
     const {region} = this
 
